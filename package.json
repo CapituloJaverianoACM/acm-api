@@ -7,9 +7,13 @@
   },
   "dependencies": {
     "@elysiajs/swagger": "^1.2.0",
+    "@types/bcrypt": "^5.0.2",
+    "bcrypt": "^5.1.1",
     "debug": "^4.4.0",
     "dotenv": "^16.4.7",
-    "elysia": "latest"
+    "elysia": "latest",
+    "jsonwebtoken": "^9.0.2",
+    "mongodb": "^6.12.0"
   },
   "devDependencies": {
     "bun-types": "latest"
