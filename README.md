@@ -1,15 +1,10 @@
-# Elysia with Bun runtime
+# Xaverian ACM Student Chapter API
 
-## Getting Started
-To get started with this template, simply paste this command into your terminal:
-```bash
-bun create elysia ./elysia-example
-```
+This API provide different interfaces for adding, update and manipulate some entities related to the Web Page.
 
-## Development
-To start the development server run:
-```bash
-bun run dev
-```
+You can access to Swagger docs sending a GET request to `/swagger`
 
-Open http://localhost:3000/ with your browser to see the result.
+**Developers**:
+
+- Sebastian Galindo. [@TalkySafe143](https://github.com/TalkySafe143)
+
