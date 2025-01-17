@@ -3,10 +3,12 @@ import 'dotenv/config'
 import { user } from "./user/controller";
 import { swagger } from '@elysiajs/swagger'
 import { auth } from "./security/controller";
+import { activity } from "./activity/controller";
 
 const app = new Elysia()
                 .use(swagger())
                 .use(auth)
+                .use(activity)
                 .use(user)
                 .listen(3000);
 

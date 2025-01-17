@@ -1,9 +1,17 @@
 import { Context } from "elysia";
-import { BadRequest } from "./responses";
+import { BadRequest, Unauthorized } from "./responses";
 import MongoDB from "../lib/mongo";
 const bcrypt = require('bcrypt');
 const jwt = require('jsonwebtoken');
 
+export const checkJWTExp = (token: string) => {
+    try {
+        jwt.verify(token, Bun.env.JWT_SECRET);
+        return true;
+    } catch(e) {
+        return false;
+    }
+}
 export const signJWT = (payload: any) => {
     return jwt.sign({
         // 1 hour
@@ -14,10 +22,10 @@ export const signJWT = (payload: any) => {
 
 export const verifyJWT = (context: Context) => {
     const auth : string | null = context.request.headers.get("authorization");
-    if (!auth) return BadRequest(context, "No Bearer JWT");
+    if (!auth) return Unauthorized(context, "No Bearer JWT");
     const [type, token] = auth.split(" ");
 
-    if (type !== 'Bearer') return BadRequest(context, "Malformed Bearer token");
+    if (type !== 'Bearer') return Unauthorized(context, "Malformed Bearer token");
     let decoded = null;
     try {
         decoded = jwt.verify(token, Bun.env.JWT_SECRET);

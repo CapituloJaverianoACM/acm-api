@@ -1,5 +1,5 @@
 import { Elysia, t } from 'elysia'
-import { userPostHandler } from './handlers';
+import { deleteUserHandler, userPostHandler } from './handlers';
 import { verifyJWT } from '../utils/auth';
 
 export const user = new Elysia({ prefix: '/users' })
@@ -10,4 +10,7 @@ export const user = new Elysia({ prefix: '/users' })
             email: t.String(),
             password: t.String()
         })
+    })
+    .delete('/:email', deleteUserHandler, {
+           beforeHandle: verifyJWT
     });
