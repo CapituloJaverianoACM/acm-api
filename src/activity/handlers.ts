@@ -1,6 +1,7 @@
 import { Context } from "elysia";
 import MongoDB from "../lib/mongo";
 import { BadRequest, Ok } from "../utils/responses";
+import { ObjectId } from "mongodb";
 
 const COLLECTION : string = 'activities';
 const mongo = new MongoDB();
@@ -10,7 +11,7 @@ export const getAllActivities = async (context: Context) => {
 }
 
 export const getOneActivity = async (context: Context) => {
-    const result = await mongo.getOneDocument(COLLECTION, {_id: context.params.id });
+    const result = await mongo.getOneDocument(COLLECTION, {_id: new ObjectId(context.params.id) });
 
     if (!result) return BadRequest(context, "Do not exist.");
 
@@ -28,22 +29,22 @@ export const createActivity = async (context: Context) => {
 export const updateActivity = async (context: Context)=> {
     const activityId = context.params.id;
 
-    const toUpdt = await mongo.getOneDocument(COLLECTION, { _id: activityId });
+    const toUpdt = await mongo.getOneDocument(COLLECTION, { _id: new ObjectId(activityId) });
 
     if (!toUpdt) return BadRequest(context, "This activity do not exist.");
 
-    return Ok(context, await mongo.updateOneDocument(COLLECTION, { _id: activityId }, context.body));
+    return Ok(context, await mongo.updateOneDocument(COLLECTION, { _id: new ObjectId(activityId) }, context.body));
 }
 
 
 export const deleteActivity = async (context: Context) => {
     const activityId = context.params.id;
-    const toDel = await mongo.getOneDocument(COLLECTION, { _id: activityId });
+    const toDel = await mongo.getOneDocument(COLLECTION, { _id: new ObjectId(activityId) });
 
     if (!toDel) return BadRequest(context, "This activity do not exist.");
 
     return Ok(
         context,
-        await mongo.deleteOneDocument(COLLECTION, { _id: activityId })
+        await mongo.deleteOneDocument(COLLECTION, { _id: new ObjectId(activityId) })
     );
 }
