@@ -10,6 +10,7 @@ const app = new Elysia()
                 .use(auth)
                 .use(activity)
                 .use(user)
+                .get('/ping', () => "Pong! From Xaverian ACM Chapter")
                 .listen(3000);
 
 console.log(
