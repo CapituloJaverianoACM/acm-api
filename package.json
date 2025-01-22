@@ -3,7 +3,7 @@
   "version": "1.0.50",
   "type": "module",
   "scripts": {
-    "build": "bun build --target=node ./src/index.ts --outdir ./build",
+    "build": "bun build --target=bun ./src/index.ts --outdir ./build",
     "test": "echo \"Error: no test specified\" && exit 1",
     "dev": "bun run --watch src/index.ts",
     "start": "node ./build/index.js"
