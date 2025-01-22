@@ -1,7 +1,7 @@
 import { Context } from "elysia";
 import { BadRequest, Unauthorized } from "./responses";
 import MongoDB from "../lib/mongo";
-const bcrypt = require('bcrypt');
+const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
 
 export const checkJWTExp = (token: string) => {

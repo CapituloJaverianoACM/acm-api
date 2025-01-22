@@ -1,7 +1,7 @@
 import { Context } from "elysia";
 import { BadRequest, Ok, Unauthorized } from "../utils/responses";
 import MongoDB from "../lib/mongo";
-const bcrypt = require('bcrypt');
+const bcrypt = require('bcryptjs');
 const mongo = new MongoDB();
 
 const COLLECTION = 'users';
