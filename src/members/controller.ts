@@ -3,6 +3,7 @@ import { verifyJWT } from "../utils/auth";
 import {
   createMember,
   deactivateMember,
+  deleteMember,
   getAllMembers,
   getOneMember,
   updateMember,
@@ -23,4 +24,7 @@ export const members = new Elysia({ prefix: "/members" })
   .put("/:id", updateMember, {
     beforeHandle: verifyJWT,
     body: UpdateMemberSchema,
+  })
+  .delete("/:id", deleteMember, {
+      beforeHandle: verifyJWT
   });

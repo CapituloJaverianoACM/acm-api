@@ -12,6 +12,8 @@ COPY ./src ./src
 
 ENV NODE_ENV=production
 
+RUN bun test
+
 RUN bun build \
 	--compile \
 	--minify-whitespace \
