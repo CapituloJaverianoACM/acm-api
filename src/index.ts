@@ -6,7 +6,7 @@ import { auth } from "./security/controller";
 import { activity } from "./activity/controller";
 import { members } from "./members/controller";
 
-const app = new Elysia()
+export const app = new Elysia()
   .use(swagger())
   .use(auth)
   .use(activity)

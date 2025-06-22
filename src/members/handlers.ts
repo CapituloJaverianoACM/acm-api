@@ -60,5 +60,19 @@ export const deactivateMember = async (context: Context) => {
     member,
   );
 
+    return Ok(context, result);
+};
+
+export const deleteMember = async (context: Context) =>  {
+  const member = await mongo.getOneDocument(COLLECTION, {
+    _id: parseInt(context.params.id)
+  });
+  if (!member) return BadRequest(context, "This member do not exist");
+
+  const result = await mongo.deleteOneDocument(
+      COLLECTION,
+      { _id: parseInt(context.params.id) }
+  )
+
   return Ok(context, result);
 };
