@@ -30,6 +30,15 @@ export const createActivity = async (context: Context) => {
   return await mongo.insertDocument(COLLECTION, context.body);
 };
 
+export const createManyActivities = async (context: Context) => {
+  // const activities = await mongo.getAllDocuments(COLLECTION);
+  // const newActivities = context.body.filter((activity: any) => !activities.some((m: any) => m._id === activity._id));
+
+  // if (newActivities.length === 0) return BadRequest(context, "All activities already exist.");
+
+  return Ok(context, await mongo.insertManyDocuments(COLLECTION, context.body));
+};
+
 export const updateActivity = async (context: Context) => {
   const activityId = context.params.id;
 

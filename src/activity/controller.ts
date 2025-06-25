@@ -1,8 +1,9 @@
-import Elysia from "elysia";
+import Elysia, { t } from "elysia";
 import { verifyJWT } from "../utils/auth";
 import { ActivitySchema, UpdateActivitySchema } from "../utils/entities";
 import {
   createActivity,
+  createManyActivities,
   deleteActivity,
   getAllActivities,
   getOneActivity,
@@ -16,6 +17,10 @@ export const activity = new Elysia({ prefix: "/activity" })
   .post("/create", createActivity, {
     beforeHandle: verifyJWT,
     body: ActivitySchema,
+  })
+  .post("/createMany", createManyActivities, {
+    beforeHandle: verifyJWT,
+    body: t.Array(ActivitySchema),
   })
   .put("/:id", updateActivity, {
     beforeHandle: verifyJWT,

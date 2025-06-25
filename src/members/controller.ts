@@ -1,7 +1,8 @@
-import Elysia from "elysia";
+import Elysia, { t } from "elysia";
 import { verifyJWT } from "../utils/auth";
 import {
   createMember,
+  createManyMembers,
   deactivateMember,
   deleteMember,
   getAllMembers,
@@ -18,6 +19,10 @@ export const members = new Elysia({ prefix: "/members" })
     beforeHandle: verifyJWT,
     body: CreateMemberSchema,
   })
+  .post("/createMany", createManyMembers, {
+    beforeHandle: verifyJWT,
+    body: t.Array(CreateMemberSchema),
+  })
   .post("/deactivate/:id", deactivateMember, {
     beforeHandle: verifyJWT,
   })
@@ -26,5 +31,5 @@ export const members = new Elysia({ prefix: "/members" })
     body: UpdateMemberSchema,
   })
   .delete("/:id", deleteMember, {
-      beforeHandle: verifyJWT
+    beforeHandle: verifyJWT
   });
