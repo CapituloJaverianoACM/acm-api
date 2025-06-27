@@ -50,6 +50,14 @@ export default class MongoDB {
     });
   }
 
+  public async insertManyDocuments(collection: string, data: any) {
+    const db = await this.connectDB();
+    const response = await db.collection(collection).insertMany(data);
+    return this.assembleResponse(response.acknowledged, {
+      insertedIds: response.insertedIds,
+    });
+  }
+
   public async getOneDocument(collection: string, query: any) {
     const db = await this.connectDB();
     const response = await db.collection(collection).findOne(query);

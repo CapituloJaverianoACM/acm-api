@@ -29,6 +29,15 @@ export const createMember = async (context: Context) => {
   return Ok(context, await mongo.insertDocument(COLLECTION, context.body));
 };
 
+export const createManyMembers = async (context: Context) => {
+  const members = await mongo.getAllDocuments(COLLECTION);
+  const newMembers = context.body.filter((member: any) => !members.some((m: any) => m._id === member._id));
+
+  if (newMembers.length === 0) return BadRequest(context, "All members already exist.");
+
+  return Ok(context, await mongo.insertManyDocuments(COLLECTION, newMembers));
+};
+
 export const updateMember = async (context: Context) => {
   const member = await mongo.getOneDocument(COLLECTION, {
     _id: parseInt(context.params.id)
@@ -60,18 +69,18 @@ export const deactivateMember = async (context: Context) => {
     member,
   );
 
-    return Ok(context, result);
+  return Ok(context, result);
 };
 
-export const deleteMember = async (context: Context) =>  {
+export const deleteMember = async (context: Context) => {
   const member = await mongo.getOneDocument(COLLECTION, {
     _id: parseInt(context.params.id)
   });
   if (!member) return BadRequest(context, "This member do not exist");
 
   const result = await mongo.deleteOneDocument(
-      COLLECTION,
-      { _id: parseInt(context.params.id) }
+    COLLECTION,
+    { _id: parseInt(context.params.id) }
   )
 
   return Ok(context, result);
