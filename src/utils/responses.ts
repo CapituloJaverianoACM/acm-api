@@ -16,6 +16,8 @@ export const sendResponse = (
 export const BadRequest = (c: Context, error: any) =>
   sendResponse(c, null, error, 400);
 
+export const Created = (c: Context, data: any) => sendResponse(c, data, null, 201);
+
 export const Ok = (c: Context, data: any) => sendResponse(c, data, null, 200);
 
 export const Unauthorized = (c: Context, msg: string) =>

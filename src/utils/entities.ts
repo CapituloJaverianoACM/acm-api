@@ -21,20 +21,7 @@ export const UpdateActivitySchema = t.Object({
   speaker: t.Optional(t.String()),
   timestamp: t.Optional(t.String()),
 });
-/*
-    *
-export interface Member {
-    id: string;
-    name: string;
-    title: string;
-    rol: string;
-    email: string;
-    bio: string;
-    skills: string[];
-    image?: string;
-}
-    *
-    * */
+
 export const CreateMemberSchema = t.Object({
   _id: t.Number(),
   name: t.String(),
@@ -47,7 +34,7 @@ export const CreateMemberSchema = t.Object({
   active: t.Boolean(),
   linkedin: t.Optional(t.String()),
   github: t.Optional(t.String()),
-  memberSince: t.String()
+  memberSince: t.String(),
 });
 
 export const UpdateMemberSchema = t.Object({
@@ -62,5 +49,32 @@ export const UpdateMemberSchema = t.Object({
   active: t.Optional(t.Boolean()),
   linkedin: t.Optional(t.String()),
   github: t.Optional(t.String()),
-  memberSince: t.Optional(t.String())
+  memberSince: t.Optional(t.String()),
+});
+
+export enum LevelEnum {
+  Initial,
+  Advanced,
+}
+
+export const CreateContestSchema = t.Object({
+  name: t.String(),
+  date: t.Date(),
+  startHour: t.Date(),
+  finalHour: t.Date(),
+  level: t.Enum(LevelEnum),
+  classroom: t.String(),
+});
+
+export const UpdateContestSchema = t.Object({
+  name: t.Optional(t.String()),
+  date: t.Optional(t.Date()),
+  startHour: t.Optional(t.Date()),
+  finalHour: t.Optional(t.Date()),
+  level: t.Optional(t.Enum(LevelEnum)),
+  classroom: t.Optional(t.String()),
+});
+
+export const IdMongoParamSchema = t.Object({
+  id: t.RegExp(/[0-9A-Fa-f]{24}/),
 });
