@@ -75,6 +75,24 @@ export const UpdateContestSchema = t.Object({
   classroom: t.Optional(t.String()),
 });
 
+export const CreateStudentSchema = t.Object({
+  id: t.String(),
+  name: t.String(),
+  surname: t.String(),
+  matches_count: t.Integer(),
+  level: t.Enum(LevelEnum),
+  victory_count: t.Integer(),
+})
+
+export const UpdateStudentSchema = t.Object({
+  id: t.Optional(t.String()),
+  name: t.Optional(t.String()),
+  surname: t.Optional(t.String()),
+  matches_count: t.Optional(t.Integer()),
+  level: t.Optional(t.Enum(LevelEnum)),
+  victory_count: t.Optional(t.Integer()),
+})
+
 export const IdMongoParamSchema = t.Object({
   id: t.RegExp(/[0-9A-Fa-f]{24}/),
 });
