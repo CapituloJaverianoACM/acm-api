@@ -61,14 +61,19 @@ export default class MongoDB {
   public async getOneDocument(collection: string, query: any) {
     const db = await this.connectDB();
     const response = await db.collection(collection).findOne(query);
-    return response;
+    if (response == null) return { error: "Record(s) not found", data: null };
+
+    return this.assembleResponse(response != null, response);
   }
 
   public async getAllDocuments(collection: string) {
     const db = await this.connectDB();
     const response = db.collection(collection).find();
 
-    return response.toArray();
+    const docs = await response.toArray();
+    if (docs.length === 0) return { error: "No records found", data: null };
+
+    return this.assembleResponse(response != null, docs);
   }
 
   public async deleteOneDocument(collection: string, query: any) {

@@ -1,57 +1,60 @@
 import { Context } from "elysia";
-import MongoDB from "../lib/mongo";
 import { BadRequest, Created, Ok } from "../utils/responses";
-import { ObjectId } from "mongodb";
+import { IDatabase } from "../lib/database.interface";
+import { SupabaseAdapter } from "../lib/supabase.adapter";
 
-const COLLECTION: string = "contests";
-const mongo = MongoDB.getInstance();
+const COLLECTION: string = "contest";
+
+const db: IDatabase = new SupabaseAdapter();
 
 export const getAllContests = async (context: Context) => {
-  return Ok(context, await mongo.getAllDocuments(COLLECTION));
+  const result = await db.getAll(COLLECTION);
+  if (result.error) return BadRequest(context, result.error);
+
+  return Ok(context, result.data);
 };
 
 export const getOneContest = async (context: Context) => {
+  const result = await db.getBy(COLLECTION, { id: parseInt(context.params.id) });
+  if (result.error) return BadRequest(context, result.error);
 
-  const contestQuery = { _id: new ObjectId(context.params.id) };
-  
-  const result = await mongo.getOneDocument(COLLECTION, contestQuery);
-  if (!result) return BadRequest(context, "Contest do not exist");
-
-  return Ok(context, result);
+  return Ok(context, result.data);
 };
 
 export const createContest = async (context: Context) => {
-
   const contestQuery = {
-      name: context.body.name
+    name: context.body.name
   }
-  const result = await mongo.getOneDocument(COLLECTION, contestQuery);
 
-  if (result) return BadRequest(context, "Contest name already exists.");
+  const result = await db.getBy(COLLECTION, contestQuery);
+  if (result.data && result.data.length > 0) return BadRequest(context, "Contest name already exists.");
 
-  return Created(context, await mongo.insertDocument(COLLECTION, context.body));
+  const insertResult = await db.insert(COLLECTION, context.body);
+  if (insertResult.error) return BadRequest(context, insertResult.error);
+
+  return Created(context, insertResult.data);
 };
 
 export const updateContest = async (context: Context) => {
-  const contestId = context.params.id;
-  const contestQuery = { _id: new ObjectId(contestId) };
+  const contestQuery = { id: parseInt(context.params.id) };
 
-  const toUpdt = await mongo.getOneDocument(COLLECTION, contestQuery);
+  const toUpdt = await db.getBy(COLLECTION, contestQuery);
+  if (toUpdt.error) return BadRequest(context, toUpdt.error);
 
-  if (!toUpdt) return BadRequest(context, "Contest do not exist");
+  const updateResult = await db.update(COLLECTION, contestQuery, context.body);
+  if (updateResult.error) return BadRequest(context, updateResult.error);
 
-  return Ok(
-    context,
-    await mongo.updateOneDocument(COLLECTION, contestQuery, context.body),
-  );
+  return Ok(context, updateResult.data);
 };
 
 export const deleteContest = async (context: Context) => {
-  const contestQuery = { _id: new ObjectId(context.params.id) };
+  const contestQuery = { id: parseInt(context.params.id) };
 
-  const toDelete = await mongo.getOneDocument(COLLECTION, contestQuery);
+  const toDelete = await db.getBy(COLLECTION, contestQuery);
+  if (toDelete.error) return BadRequest(context, toDelete.error);
 
-  if (!toDelete) return BadRequest(context, "This contest do not exist");
+  const deleteResult = await db.delete(COLLECTION, contestQuery);
+  if (deleteResult.error) return BadRequest(context, deleteResult.error);
 
-  return Ok(context, await mongo.deleteOneDocument(COLLECTION, contestQuery));
+  return Ok(context, deleteResult.data);
 };

@@ -1,6 +1,7 @@
 import { Context } from "elysia";
 import { BadRequest, Unauthorized } from "./responses";
-import MongoDB from "../lib/mongo";
+import { IDatabase } from "../lib/database.interface";
+import { MongoAdapter } from "../lib/mongo.adapter";
 const bcrypt = require("bcryptjs");
 const jwt = require("jsonwebtoken");
 
@@ -75,12 +76,12 @@ const normalUserCallback = async (
   email: string,
   password: string,
 ): Promise<boolean> => {
-  const mongoDb = MongoDB.getInstance();
-  const result = await mongoDb.getOneDocument("users", { email });
+  const db: IDatabase = new MongoAdapter();
+  const result = await db.getBy("users", { email });
 
-  if (!result) return false;
+  if (result.error) return false;
 
-  return bcrypt.compareSync(password, result.password);
+  return bcrypt.compareSync(password, result.data.password);
 };
 
 export const checkSignIn = async (context: Context) => {

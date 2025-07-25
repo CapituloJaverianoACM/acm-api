@@ -1,75 +1,73 @@
 import { Context } from "elysia";
-import MongoDB from "../lib/mongo";
 import { BadRequest, Ok } from "../utils/responses";
 import { ObjectId } from "mongodb";
+import { IDatabase } from "../lib/database.interface";
+import { MongoAdapter } from "../lib/mongo.adapter";
 
 const COLLECTION: string = "activities";
-const mongo = MongoDB.getInstance();
+const db: IDatabase = new MongoAdapter();
 
 export const getAllActivities = async (context: Context) => {
-  return Ok(context, await mongo.getAllDocuments(COLLECTION));
+  const response = await db.getAll(COLLECTION);
+  if (response.error) return BadRequest(context, "No activities found.");
+  return Ok(context, response.data);
 };
 
 export const getOneActivity = async (context: Context) => {
-  const result = await mongo.getOneDocument(COLLECTION, {
+  const result = await db.getBy(COLLECTION, {
     _id: new ObjectId(context.params.id),
   });
 
-  if (!result) return BadRequest(context, "Do not exist.");
+  if (result.error) return BadRequest(context, "Do not exist.");
 
-  return Ok(context, result);
+  return Ok(context, result.data);
 };
 
 export const createActivity = async (context: Context) => {
-  const act = await mongo.getOneDocument(COLLECTION, {
+  const act = await db.getBy(COLLECTION, {
     title: context.body.title,
   });
 
-  if (act) return BadRequest(context, "Activity already exist");
+  if (act.data) return BadRequest(context, "Activity already exist");
 
-  return await mongo.insertDocument(COLLECTION, context.body);
+  const resultInsert = await db.insert(COLLECTION, context.body);
+  if (resultInsert.error) return BadRequest(context, resultInsert.error);
+
+  return Ok(context, resultInsert.data);
 };
 
 export const createManyActivities = async (context: Context) => {
-  // const activities = await mongo.getAllDocuments(COLLECTION);
-  // const newActivities = context.body.filter((activity: any) => !activities.some((m: any) => m._id === activity._id));
+  const resultInsertMany = await db.insertMany(COLLECTION, context.body)
+  if (resultInsertMany.error) return BadRequest(context, resultInsertMany.error);
 
-  // if (newActivities.length === 0) return BadRequest(context, "All activities already exist.");
-
-  return Ok(context, await mongo.insertManyDocuments(COLLECTION, context.body));
+  return Ok(context, resultInsertMany.data);
 };
 
 export const updateActivity = async (context: Context) => {
   const activityId = context.params.id;
 
-  const toUpdt = await mongo.getOneDocument(COLLECTION, {
+  const toUpdt = await db.getBy(COLLECTION, {
     _id: new ObjectId(activityId),
   });
 
-  if (!toUpdt) return BadRequest(context, "This activity do not exist.");
+  if (toUpdt.error) return BadRequest(context, "This activity do not exist.");
 
-  return Ok(
-    context,
-    await mongo.updateOneDocument(
-      COLLECTION,
-      { _id: new ObjectId(activityId) },
-      context.body,
-    ),
-  );
+  const resultUpdate = await db.update(COLLECTION, { _id: new ObjectId(activityId) }, context.body)
+  if (resultUpdate.error) return BadRequest(context, resultUpdate.error);
+
+  return Ok(context, resultUpdate.data);
 };
 
 export const deleteActivity = async (context: Context) => {
   const activityId = context.params.id;
-  const toDel = await mongo.getOneDocument(COLLECTION, {
+  const toDel = await db.getBy(COLLECTION, {
     _id: new ObjectId(activityId),
   });
 
-  if (!toDel) return BadRequest(context, "This activity do not exist.");
+  if (toDel.error) return BadRequest(context, "This activity do not exist.");
 
-  return Ok(
-    context,
-    await mongo.deleteOneDocument(COLLECTION, {
-      _id: new ObjectId(activityId),
-    }),
-  );
+  const resultDelete = await db.delete(COLLECTION, { _id: new ObjectId(activityId) });
+  if (resultDelete.error) return BadRequest(context, resultDelete.error);
+
+  return Ok(context, resultDelete.data);
 };

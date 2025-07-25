@@ -12,9 +12,7 @@ import {
 export const contests = new Elysia({ prefix: "/contests" })
   .state("user", {})
   .get("/", getAllContests)
-  .get("/:id", getOneContest, {
-      params: IdMongoParamSchema
-  })
+  .get("/:id", getOneContest)
   .post("/create", createContest, {
     beforeHandle: verifyJWT,
     body: CreateContestSchema,
@@ -22,9 +20,7 @@ export const contests = new Elysia({ prefix: "/contests" })
   .put("/:id", updateContest, {
     beforeHandle: verifyJWT,
     body: UpdateContestSchema,
-    params: IdMongoParamSchema
   })
   .delete("/:id", deleteContest, {
     beforeHandle: verifyJWT,
-    params: IdMongoParamSchema
   });

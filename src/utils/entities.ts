@@ -52,26 +52,21 @@ export const UpdateMemberSchema = t.Object({
   memberSince: t.Optional(t.String()),
 });
 
-export enum LevelEnum {
-  Initial,
-  Advanced,
-}
-
 export const CreateContestSchema = t.Object({
   name: t.String(),
   date: t.Date(),
-  startHour: t.Date(),
-  finalHour: t.Date(),
-  level: t.Enum(LevelEnum),
+  start_hour: t.Date(),
+  final_hour: t.Date(),
+  level: t.String(),
   classroom: t.String(),
 });
 
 export const UpdateContestSchema = t.Object({
   name: t.Optional(t.String()),
   date: t.Optional(t.Date()),
-  startHour: t.Optional(t.Date()),
-  finalHour: t.Optional(t.Date()),
-  level: t.Optional(t.Enum(LevelEnum)),
+  start_hour: t.Optional(t.Date()),
+  final_hour: t.Optional(t.Date()),
+  level: t.Optional(t.String()),
   classroom: t.Optional(t.String()),
 });
 
