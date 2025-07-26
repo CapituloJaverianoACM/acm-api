@@ -1,3 +1,4 @@
+import { ObjectId } from "mongodb";
 import { IDatabase } from "./database.interface";
 import MongoDB from "./mongo";
 
@@ -17,6 +18,8 @@ export class MongoAdapter implements IDatabase {
     }
 
     async getBy<T>(collection: string, query: Partial<T>) {
+        if (collection == "members") query._id = parseInt(query._id as string);
+        else query._id = new ObjectId(query._id as string);
         return await this.db.getOneDocument(collection, query);
     }
 
