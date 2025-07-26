@@ -1,6 +1,5 @@
 import { Context } from "elysia";
 import { BadRequest, Ok } from "../utils/responses";
-import { ObjectId } from "mongodb";
 import { IDatabase } from "../lib/database.interface";
 import { MongoAdapter } from "../lib/mongo.adapter";
 
@@ -15,7 +14,7 @@ export const getAllActivities = async (context: Context) => {
 
 export const getOneActivity = async (context: Context) => {
     const result = await db.getBy(COLLECTION, {
-        _id: new ObjectId(context.params.id),
+        _id: parseInt(context.params.id),
     });
 
     if (result.error) return BadRequest(context, "Do not exist.");
@@ -48,14 +47,14 @@ export const updateActivity = async (context: Context) => {
     const activityId = context.params.id;
 
     const toUpdt = await db.getBy(COLLECTION, {
-        _id: new ObjectId(activityId),
+        _id: parseInt(activityId),
     });
 
     if (toUpdt.error) return BadRequest(context, "This activity do not exist.");
 
     const resultUpdate = await db.update(
         COLLECTION,
-        { _id: new ObjectId(activityId) },
+        { _id: parseInt(activityId) },
         context.body,
     );
     if (resultUpdate.error) return BadRequest(context, resultUpdate.error);
@@ -66,13 +65,13 @@ export const updateActivity = async (context: Context) => {
 export const deleteActivity = async (context: Context) => {
     const activityId = context.params.id;
     const toDel = await db.getBy(COLLECTION, {
-        _id: new ObjectId(activityId),
+        _id: parseInt(activityId),
     });
 
     if (toDel.error) return BadRequest(context, "This activity do not exist.");
 
     const resultDelete = await db.delete(COLLECTION, {
-        _id: new ObjectId(activityId),
+        _id: parseInt(activityId),
     });
     if (resultDelete.error) return BadRequest(context, resultDelete.error);
 
