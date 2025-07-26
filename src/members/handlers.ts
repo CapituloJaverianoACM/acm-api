@@ -1,87 +1,105 @@
 import { Context } from "elysia";
-import MongoDB from "../lib/mongo";
 import { BadRequest, Ok } from "../utils/responses";
+import { IDatabase } from "../lib/database.interface";
+import { MongoAdapter } from "../lib/mongo.adapter";
 
 const COLLECTION: string = "members";
-const mongo = MongoDB.getInstance();
+const db: IDatabase = new MongoAdapter();
 
 export const getAllMembers = async (context: Context) => {
-  const result = await mongo.getAllDocuments(COLLECTION);
-  return Ok(context, result);
+    const result = await db.getAll(COLLECTION);
+    if (result.error) return BadRequest(context, "No members found.");
+    return Ok(context, result.data);
 };
 
 export const getOneMember = async (context: Context) => {
-  const result = await mongo.getOneDocument(COLLECTION, {
-    _id: parseInt(context.params.id),
-  });
+    const result = await db.getBy(COLLECTION, {
+        _id: parseInt(context.params.id),
+    });
 
-  if (!result) return BadRequest(context, "This member do not exist.");
+    if (result.error) return BadRequest(context, "This member do not exist.");
 
-  return Ok(context, result);
+    return Ok(context, result.data);
 };
 
 export const createMember = async (context: Context) => {
-  const member = await mongo.getOneDocument(COLLECTION, {
-    _id: context.body._id,
-  });
+    const member = await db.getBy(COLLECTION, {
+        _id: context.body._id,
+    });
 
-  if (member) return BadRequest(context, "Member already exist.");
-  return Ok(context, await mongo.insertDocument(COLLECTION, context.body));
+    if (member.data) return BadRequest(context, "Member already exist.");
+
+    const resultInsert = await db.insert(COLLECTION, context.body);
+    if (resultInsert.error) return BadRequest(context, resultInsert.error);
+
+    return Ok(context, resultInsert.data);
 };
 
 export const createManyMembers = async (context: Context) => {
-  const members = await mongo.getAllDocuments(COLLECTION);
-  const newMembers = context.body.filter((member: any) => !members.some((m: any) => m._id === member._id));
+    const members = await db.getAll(COLLECTION);
 
-  if (newMembers.length === 0) return BadRequest(context, "All members already exist.");
+    if (members.error) return BadRequest(context, "No members found.");
 
-  return Ok(context, await mongo.insertManyDocuments(COLLECTION, newMembers));
+    const newMembers = context.body.filter(
+        (member: any) => !members.data.some((m: any) => m._id === member._id),
+    );
+
+    if (newMembers.length === 0)
+        return BadRequest(context, "All members already exist.");
+
+    const resultInsertMany = await db.insertMany(COLLECTION, newMembers);
+    if (resultInsertMany.error)
+        return BadRequest(context, resultInsertMany.error);
+
+    return Ok(context, resultInsertMany.data);
 };
 
 export const updateMember = async (context: Context) => {
-  const member = await mongo.getOneDocument(COLLECTION, {
-    _id: parseInt(context.params.id)
-  });
+    const member = await db.getBy(COLLECTION, {
+        _id: parseInt(context.params.id),
+    });
 
-  if (!member) return BadRequest(context, "This member do not exist.");
+    if (member.error) return BadRequest(context, "This member do not exist.");
 
-  const result = await mongo.updateOneDocument(
-    COLLECTION,
-    { _id: parseInt(context.params.id) },
-    context.body,
-  );
+    const result = await db.update(
+        COLLECTION,
+        { _id: parseInt(context.params.id) },
+        context.body,
+    );
+    if (result.error) return BadRequest(context, result.error);
 
-  return Ok(context, result);
+    return Ok(context, result.data);
 };
 
 export const deactivateMember = async (context: Context) => {
-  const member = await mongo.getOneDocument(COLLECTION, {
-    _id: parseInt(context.params.id)
-  });
-  if (!member) return BadRequest(context, "This member do not exist.");
-  if (!member.active)
-    return BadRequest(context, "This member is already deactivated.");
+    const member = await db.getBy(COLLECTION, {
+        _id: parseInt(context.params.id),
+    });
+    if (member.error) return BadRequest(context, "This member do not exist.");
+    if (!member.data.active)
+        return BadRequest(context, "This member is already deactivated.");
 
-  member.active = false;
-  const result = await mongo.updateOneDocument(
-    COLLECTION,
-    { _id: member._id },
-    member,
-  );
+    member.data.active = false;
+    const result = await db.update(
+        COLLECTION,
+        { _id: member.data._id },
+        member.data,
+    );
+    if (result.error) return BadRequest(context, result.error);
 
-  return Ok(context, result);
+    return Ok(context, result.data);
 };
 
 export const deleteMember = async (context: Context) => {
-  const member = await mongo.getOneDocument(COLLECTION, {
-    _id: parseInt(context.params.id)
-  });
-  if (!member) return BadRequest(context, "This member do not exist");
+    const member = await db.getBy(COLLECTION, {
+        _id: parseInt(context.params.id),
+    });
+    if (member.error) return BadRequest(context, "This member do not exist");
 
-  const result = await mongo.deleteOneDocument(
-    COLLECTION,
-    { _id: parseInt(context.params.id) }
-  )
+    const result = await db.delete(COLLECTION, {
+        _id: parseInt(context.params.id),
+    });
+    if (result.error) return BadRequest(context, result.error);
 
-  return Ok(context, result);
+    return Ok(context, result.data);
 };
