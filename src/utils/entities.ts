@@ -75,6 +75,16 @@ export const UpdateContestSchema = t.Object({
     classroom: t.Optional(t.String()),
 });
 
+export const CreatePictureSchema = t.Object({
+    link: t.String(),
+    contest_id: t.Number(),
+});
+
+export const UpdatePictureSchema = t.Object({
+    link: t.Optional(t.String()),
+    contest_id: t.Optional(t.Number()),
+});
+
 export const IdMongoParamSchema = t.Object({
     id: t.RegExp(/[0-9A-Fa-f]{24}/),
 });
