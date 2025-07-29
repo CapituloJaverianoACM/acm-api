@@ -101,6 +101,20 @@ export const UpdatePictureSchema = t.Object({
     contest_id: t.Optional(t.Number()),
 });
 
+export const CreateResultSchema = t.Object({
+    local_id: t.Number(),
+    visitant_id: t.Number(),
+    winner_id: t.Number(),
+    contest_id: t.Number(),
+})
+
+export const UpdateResultSchema = t.Object({
+    local_id: t.Optional(t.Number()),
+    visitant_id: t.Optional(t.Number()),
+    winner_id: t.Optional(t.Number()),
+    contest_id: t.Optional(t.Number()),
+})
+
 export const IdMongoParamSchema = t.Object({
     id: t.RegExp(/[0-9A-Fa-f]{24}/),
 });
