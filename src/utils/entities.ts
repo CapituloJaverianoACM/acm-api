@@ -76,21 +76,19 @@ export const UpdateContestSchema = t.Object({
 });
 
 export const CreateStudentSchema = t.Object({
-  id: t.String(),
   name: t.String(),
   surname: t.String(),
-  matches_count: t.Integer(),
+  matches_count: t.Number(),
+  victory_count: t.Number(),
   level: t.Enum(LevelEnum),
-  victory_count: t.Integer(),
 })
 
 export const UpdateStudentSchema = t.Object({
-  id: t.Optional(t.String()),
   name: t.Optional(t.String()),
   surname: t.Optional(t.String()),
-  matches_count: t.Optional(t.Integer()),
+  matches_count: t.Optional(t.Number()),
+  victory_count: t.Optional(t.Number()),
   level: t.Optional(t.Enum(LevelEnum)),
-  victory_count: t.Optional(t.Integer()),
 })
 
 export const IdMongoParamSchema = t.Object({

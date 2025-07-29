@@ -1,61 +1,66 @@
 import { Context } from "elysia";
-import MongoDB from "../lib/mongo";
-import { BadRequest, Ok } from "../utils/responses";
+import { BadRequest, Created, Ok } from "../utils/responses";
+import { IDatabase } from "../lib/database.interface";
+import { SupabaseAdapter } from "../lib/supabase.adapter";
 
-const COLLECTION: string = "students";
-const mongo = MongoDB.getInstance();
+const COLLECTION: string = "student";
+const db: IDatabase = new SupabaseAdapter();
 
 export const getAllStudents = async (context: Context) => {
-  const result = await mongo.getAllDocuments(COLLECTION);
-  return Ok(context, result);
+  const result = await db.getAll(COLLECTION);
+  if (result.error) return BadRequest(context, result.error);
+  return Ok(context, result.data);
 };
 
 export const getOneStudent = async (context: Context) => {
-  const result = await mongo.getOneDocument(COLLECTION, {
-    _id: parseInt(context.params.id),
+  const result = await db.getBy(COLLECTION, {
+    id: parseInt(context.params.id),
   });
 
-  if (!result) return BadRequest(context, "This student do not exist.");
+  if (result.error) return BadRequest(context, result.error);
 
-  return Ok(context, result);
+  return Ok(context, result.data);
 };
 
 export const createStudent = async (context: Context) => {
-  const member = await mongo.getOneDocument(COLLECTION, {
-    _id: context.body._id,
-  });
 
-  if (member) return BadRequest(context, "Student already exist.");
-  return Ok(context, await mongo.insertDocument(COLLECTION, context.body));
+  const insertMember = await db.insert(COLLECTION, context.body);
+  
+  if(insertMember.error) return BadRequest(context, insertMember.error);
+
+  return Created(context, insertMember.data);
 };
 
 
 export const updateStudent = async (context: Context) => {
-  const member = await mongo.getOneDocument(COLLECTION, {
-    _id: parseInt(context.params.id)
+  const member = await db.getBy(COLLECTION, {
+    id: parseInt(context.params.id)
   });
 
-  if (!member) return BadRequest(context, "This student do not exist.");
+  if(member.error) return BadRequest(context,member.error);
 
-  const result = await mongo.updateOneDocument(
+  const result = await db.update(
     COLLECTION,
-    { _id: parseInt(context.params.id) },
+    { id: parseInt(context.params.id) },
     context.body,
   );
 
-  return Ok(context, result);
+  if(result.error) return BadRequest(context, result.error);
+
+  return Ok(context, result.data);
 };
 
 export const deleteStudent = async (context: Context) => {
-  const member = await mongo.getOneDocument(COLLECTION, {
-    _id: parseInt(context.params.id)
+  const member = await db.getBy(COLLECTION, {
+    id: parseInt(context.params.id)
   });
-  if (!member) return BadRequest(context, "This student do not exist");
+  if (member.error) return BadRequest(context, member.error);
 
-  const result = await mongo.deleteOneDocument(
+  const result = await db.delete(
     COLLECTION,
-    { _id: parseInt(context.params.id) }
+    { id: parseInt(context.params.id) }
   )
 
-  return Ok(context, result);
+  if(result.error) return BadRequest(context, result.error);
+  return Ok(context, result.data);
 };
