@@ -49,6 +49,7 @@ export const createResult = async (context: (Context & {
   } = context.body
 
   if (local_id == visitant_id) return BadRequest(context, "Visitant and Local are the same.")
+  if (winner_id != local_id && winner_id != visitant_id) return BadRequest(context, "Neither visitant or local is the winner")
 
   const result = await db.insert(COLLECTION, context.body)
 
@@ -61,6 +62,7 @@ export const updateResult = async (context: (Context & {
   body: typeof UpdateResultSchema
 })) => {
   const { id } = context.params
+  const { winner_id, local_id, visitant_id } = context.body
 
   const resultQuery = {
     id: id
@@ -69,6 +71,8 @@ export const updateResult = async (context: (Context & {
   const toUpdt = await db.getBy(COLLECTION, resultQuery);
 
   if (!toUpdt) return BadRequest(context, "Result do not exist")
+
+  if (winner_id != local_id && winner_id != visitant_id) return BadRequest(context, "Neither visitant or local is the winner")
 
   const result = await db.update(COLLECTION, resultQuery, context.body)
 
