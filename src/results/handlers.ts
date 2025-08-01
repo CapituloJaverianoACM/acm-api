@@ -24,7 +24,7 @@ export const getOneResult = async (context: Context) => {
 
   if (result.error) return BadRequest(context, result.error);
 
-  return Ok(context, result);
+  return Ok(context, result.data);
 }
 
 export const getResultsByContestId = async (context: Context) => {
@@ -35,7 +35,7 @@ export const getResultsByContestId = async (context: Context) => {
 
   if (result.error) return BadRequest(context, result.error)
 
-  return Ok(context, result);
+  return Ok(context, result.data);
 }
 
 export const createResult = async (context: (Context & {
