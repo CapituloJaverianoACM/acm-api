@@ -1,7 +1,6 @@
 import Elysia from "elysia";
-import { createResult, deleteResult, getAllResults, updateResult } from "./handlers";
-import { getOneContest } from "../contests/handlers";
-import { CreateResultSchema, IdMongoParamSchema, UpdateResultSchema } from "../utils/entities";
+import { createResult, deleteResult, getAllResults, getOneResult, getResultsByContestId, updateResult } from "./handlers";
+import { CreateResultSchema, IdSupabaseInt4, UpdateResultSchema } from "../utils/entities";
 import { verifyJWT } from "../utils/auth";
 
 
@@ -10,8 +9,8 @@ export const results = new Elysia({
 })
   .state("user", {})
   .get("/", getAllResults)
-  .get("/:id", getOneContest, {
-    params: IdMongoParamSchema
+  .get("/:id", getOneResult, {
+    params: IdSupabaseInt4
   })
   .post("/create", createResult, {
     beforeHandle: verifyJWT,
@@ -20,12 +19,12 @@ export const results = new Elysia({
   .put("/:id", updateResult, {
     beforeHandle: verifyJWT,
     body: UpdateResultSchema,
-    paraks: IdMongoParamSchema
+    params: IdSupabaseInt4
   })
   .delete("/:id", deleteResult, {
     beforeHandle: verifyJWT,
-    params: IdMongoParamSchema
+    params: IdSupabaseInt4
   })
-  // .get('/contest/:id', getResultsByContestId, {
-  //   params: IdMongoParamSchema
-  // })
+  .get('/contest/:id', getResultsByContestId, {
+    params: IdSupabaseInt4
+  })

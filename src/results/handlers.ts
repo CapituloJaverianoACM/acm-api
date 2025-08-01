@@ -6,6 +6,7 @@ import { SupabaseAdapter } from "../lib/supabase.adapter";
 import { CreateResultSchema, UpdateResultSchema } from "../utils/entities";
 
 const COLLECTION: string = "results"
+
 const db: IDatabase = new SupabaseAdapter();
 
 export const getAllResults = async (context: Context) => {
@@ -15,7 +16,7 @@ export const getAllResults = async (context: Context) => {
 export const getOneResult = async (context: Context) => {
   const { id } = context.params
 
-  const resultQuery = { _id: new ObjectId(id) };
+  const resultQuery = { id };
 
   const result = await db.getBy(COLLECTION, resultQuery);
 
@@ -24,31 +25,28 @@ export const getOneResult = async (context: Context) => {
   return Ok(context, result);
 }
 
-// export const getResultsByContestId = async (context: Context) => {
-//   const { id } = context.params;
-//   const resultsQuery = { contest_id: id }
+export const getResultsByContestId = async (context: Context) => {
+  const { id } = context.params;
+  const resultsQuery = { contest_id: id }
 
-//   const result = await db.getMany(COLLECTION, resultsQuery);
+  const result = await db.getBy(COLLECTION, resultsQuery);
 
-//   if (!result) return BadRequest(context, "No results were found for this context")
+  if (!result) return BadRequest(context, "No results were found for this context")
 
-//   return Ok(context, result);
-// }
+  return Ok(context, result);
+}
 
 export const createResult = async (context: (Context & {
   body: typeof CreateResultSchema
 })) => {
   const {
-    contest_id
+    contest_id,
+    local_id,
+    visitant_id,
+    winner_id
   } = context.body
 
-  const resultQuery = {
-    contest_id
-  }
-
-  const result = await db.getBy(COLLECTION, resultQuery)
-
-  if (result) return BadRequest(context, "Contest already has a result")
+  if (local_id == visitant_id) return BadRequest(context, "Visitant and Local are the same.")
 
   return Created(context, await db.insert(COLLECTION, context.body))
 }
@@ -59,7 +57,7 @@ export const updateResult = async (context: (Context & {
   const { id } = context.params
 
   const resultQuery = {
-    _id: new ObjectId(id)
+    id: id
   }
 
   const toUpdt = await db.getBy(COLLECTION, resultQuery);
@@ -76,7 +74,7 @@ export const deleteResult = async (context: Context) => {
   const { id } = context.params
 
   const resultQuery = {
-    _id: new ObjectId(id)
+    id: id
   }
 
   const toDelete = await db.getBy(COLLECTION, resultQuery);
