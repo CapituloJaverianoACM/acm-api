@@ -9,6 +9,7 @@ import { contests } from "./contests/controller";
 import { pictures } from "./picture/controller";
 import cors from "@elysiajs/cors";
 import { results } from "./results/controller";
+import { students } from "./student/controller";
 
 export const app = new Elysia()
     .use(
@@ -26,6 +27,8 @@ export const app = new Elysia()
     .use(members)
     .use(contests)
     .use(results)
+    .use(students)
+    .use(pictures)
     .get("/ping", () => "Pong! From Xaverian ACM Chapter")
     .listen(Number(process.env.PORT));
 

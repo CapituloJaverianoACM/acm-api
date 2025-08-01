@@ -75,6 +75,50 @@ export const UpdateContestSchema = t.Object({
     classroom: t.Optional(t.String()),
 });
 
+export const CreateStudentSchema = t.Object({
+    name: t.String(),
+    surname: t.String(),
+    matches_count: t.Number(),
+    victory_count: t.Number(),
+    level: t.Enum(LevelEnum),
+})
+
+export const UpdateStudentSchema = t.Object({
+    name: t.Optional(t.String()),
+    surname: t.Optional(t.String()),
+    matches_count: t.Optional(t.Number()),
+    victory_count: t.Optional(t.Number()),
+    level: t.Optional(t.Enum(LevelEnum)),
+})
+
+export const CreatePictureSchema = t.Object({
+    link: t.String(),
+    contest_id: t.Number(),
+});
+
+export const UpdatePictureSchema = t.Object({
+    link: t.Optional(t.String()),
+    contest_id: t.Optional(t.Number()),
+});
+
+export const CreateResultSchema = t.Object({
+    contest_id: t.Number(),
+    winner_id: t.Number(),
+    local_id: t.Number(),
+    visitant_id: t.Number(),
+})
+
+export const UpdateResultSchema = t.Object({
+    contest_id: t.Number(),
+    winner_id: t.Number(),
+    local_id: t.Number(),
+    visitant_id: t.Number(),
+})
+
+export const IdSupabaseInt4 = t.Object({
+    id: t.Number()
+})
+
 export const IdMongoParamSchema = t.Object({
     id: t.RegExp(/[0-9A-Fa-f]{24}/),
 });

@@ -1,6 +1,5 @@
 import { Context } from "elysia";
 import { BadRequest, Created, Ok } from "../utils/responses";
-import { ObjectId } from "mongodb";
 import { IDatabase } from "../lib/database.interface";
 import { SupabaseAdapter } from "../lib/supabase.adapter";
 import { CreateResultSchema, UpdateResultSchema } from "../utils/entities";
