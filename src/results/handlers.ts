@@ -9,7 +9,10 @@ const COLLECTION: string = "results"
 const db: IDatabase = new SupabaseAdapter();
 
 export const getAllResults = async (context: Context) => {
-  return Ok(context, await db.getAll(COLLECTION));
+  const result = await db.getAll(COLLECTION)
+  if (result.error) return BadRequest(context, result.error);
+
+  return Ok(context, result.data);
 }
 
 export const getOneResult = async (context: Context) => {
@@ -19,7 +22,7 @@ export const getOneResult = async (context: Context) => {
 
   const result = await db.getBy(COLLECTION, resultQuery);
 
-  if (!result) return BadRequest(context, "Result do not exist");
+  if (result.error) return BadRequest(context, result.error);
 
   return Ok(context, result);
 }
@@ -30,7 +33,7 @@ export const getResultsByContestId = async (context: Context) => {
 
   const result = await db.getBy(COLLECTION, resultsQuery);
 
-  if (!result) return BadRequest(context, "No results were found for this context")
+  if (result.error) return BadRequest(context, result.error)
 
   return Ok(context, result);
 }
@@ -47,7 +50,11 @@ export const createResult = async (context: (Context & {
 
   if (local_id == visitant_id) return BadRequest(context, "Visitant and Local are the same.")
 
-  return Created(context, await db.insert(COLLECTION, context.body))
+  const result = await db.insert(COLLECTION, context.body)
+
+  if (result.error) return BadRequest(context, result.error)
+
+  return Created(context, result.data)
 }
 
 export const updateResult = async (context: (Context & {
@@ -63,9 +70,13 @@ export const updateResult = async (context: (Context & {
 
   if (!toUpdt) return BadRequest(context, "Result do not exist")
 
+  const result = await db.update(COLLECTION, resultQuery, context.body)
+
+  if (result.error) return BadRequest(context, result.error)
+
   return Ok(
     context,
-    await db.update(COLLECTION, resultQuery, context.body)
+    result.data
   )
 }
 
@@ -78,7 +89,11 @@ export const deleteResult = async (context: Context) => {
 
   const toDelete = await db.getBy(COLLECTION, resultQuery);
 
-  if (!toDelete) return BadRequest(context, "This result do not exist");
+  if (toDelete.error) return BadRequest(context, toDelete.error);
 
-  return Ok(context, await db.delete(COLLECTION, resultQuery))
+  const result = await db.delete(COLLECTION, resultQuery)
+
+  if (result.error) return BadRequest(context, result.error);
+
+  return Ok(context, result.data)
 }
