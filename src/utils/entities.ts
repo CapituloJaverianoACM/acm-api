@@ -89,6 +89,10 @@ export const UpdateResultSchema = t.Object({
     contest_id: t.Optional(t.Number()),
 })
 
+export const IdSupabaseInt4 = t.Object({
+    id: t.Number()
+})
+
 export const IdMongoParamSchema = t.Object({
     id: t.RegExp(/[0-9A-Fa-f]{24}/),
 });
