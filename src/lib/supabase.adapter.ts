@@ -12,12 +12,24 @@ export class SupabaseAdapter implements IDatabase {
         return this.db.insertMany(table, data);
     }
 
-    async getAll(table: string) {
-        return this.db.getAll(table);
+    async getAll(table: string, order?: {
+        column: string,
+        asc?: boolean
+    }, suborder?: {
+        column: string,
+        asc?: boolean
+    }, limit?: number) {
+        return this.db.getAll(table, order, suborder, limit);
     }
 
-    async getBy<T>(table: string, query: Partial<T>) {
-        return this.db.getBy<T>(table, query);
+    async getBy<T>(table: string, query: Partial<T>, order?: {
+        column: string,
+        asc?: boolean
+    }, suborder?: {
+        column: string,
+        asc?: boolean
+    }, limit?: number) {
+        return this.db.getBy<T>(table, query, order, suborder, limit);
     }
 
     async update<T>(table: string, query: Partial<T>, data: Partial<T>) {
