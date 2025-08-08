@@ -34,18 +34,71 @@ export default class SupabaseDB {
         return this.assembleResponse(error, result);
     }
 
-    public async getAll(table: string) {
-        const { error, data } = await this.client.from(table).select("*");
+    public async getAll(table: string, order?: {
+        column: string,
+        asc?: boolean
+    }, suborder?: {
+        column: string,
+        asc?: boolean
+    }, limit?: number) {
+
+        let req = this.client.from(table).select("*");
+
+        if (order) {
+            req = req.order(order.column, {
+                ascending: order.asc ?? false
+            })
+        }
+
+        if (suborder) {
+            req = req.order(suborder.column, {
+                ascending: suborder.asc ?? false
+            })
+        }
+
+        if (limit) {
+            req = req.limit(limit)
+        }
+
+        const { error, data } = await req;
+
         if (data && data.length === 0 && error == null)
             return this.assembleResponse({ message: "No records found" }, null);
         return this.assembleResponse(error, data);
     }
 
-    public async getBy<T>(table: string, query: Partial<T>) {
-        const { error, data } = await this.client
+    public async getBy<T>(table: string, query: Partial<T>, order?: {
+        column: string,
+        asc?: boolean
+    }, suborder?: {
+        column: string,
+        asc?: boolean
+    }, limit?: number) {
+
+        let req = this.client
             .from(table)
             .select("*")
             .match(query);
+
+        if (order) {
+            req = req.order(order.column, {
+                ascending: order.asc ?? false
+            })
+        }
+
+        if (suborder) {
+            req = req.order(suborder.column, {
+                ascending: suborder.asc ?? false
+            })
+        }
+
+        if (limit) {
+            req = req.limit(limit)
+        }
+
+        const { data, error } = await req;
+
+
         if (data && data.length === 0 && error == null)
             return this.assembleResponse({ message: "Record(s) not found" }, null);
 
