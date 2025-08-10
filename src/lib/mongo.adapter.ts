@@ -13,12 +13,29 @@ export class MongoAdapter implements IDatabase {
         return this.db.insertManyDocuments(collection, data);
     }
 
-    async getAll(collection: string) {
-        return this.db.getAllDocuments(collection);
+    async getAll(collection: string, order?: {
+        column: string,
+        asc?: boolean
+    }, suborder?: {
+        column: string,
+        asc?: boolean
+    }, limit?: number) {
+        return this.db.getAllDocuments(collection, order, suborder, limit);
     }
 
-    async getBy<T>(collection: string, query: Partial<T>) {
+    // Por alguna razón este getBy siempre esta limitado a solo 1 documento.
+    // No se implementa order y limit por la misma razón.
+
+    async getBy<T>(collection: string, query: Partial<T>, order?: {
+        column: string,
+        asc?: boolean
+    }, suborder?: {
+        column: string,
+        asc?: boolean
+    }, limit?: number) {
+        //@ts-expect-error
         if (collection == "members" && query._id) query._id = parseInt(query._id as string);
+        //@ts-expect-error
         else if (query._id) query._id = new ObjectId(query._id as string);
         return await this.db.getOneDocument(collection, query);
     }

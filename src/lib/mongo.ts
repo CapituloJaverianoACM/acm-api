@@ -66,9 +66,32 @@ export default class MongoDB {
         return this.assembleResponse(response != null, response);
     }
 
-    public async getAllDocuments(collection: string) {
+    public async getAllDocuments(collection: string, order?: {
+        column: string,
+        asc?: boolean
+    }, suborder?: {
+        column: string,
+        asc?: boolean
+    }, limit?: number) {
         const db = await this.connectDB();
-        const response = db.collection(collection).find();
+        let response = db.collection(collection).find();
+
+        const sortObj: Record<string, 1 | -1> = {};
+
+        if (order) {
+            sortObj[order.column] = order.asc ? 1 : -1;
+        }
+        if (suborder) {
+            sortObj[suborder.column] = suborder.asc ? 1 : -1;
+        }
+
+        if (order || suborder) {
+            response = response.sort(sortObj);
+        }
+
+        if (limit) {
+            response = response.limit(limit)
+        }
 
         const docs = await response.toArray();
         if (docs.length === 0) return { error: "No records found", data: null };

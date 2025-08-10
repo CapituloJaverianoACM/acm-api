@@ -4,21 +4,57 @@ import { IDatabase } from "../lib/database.interface";
 import { SupabaseAdapter } from "../lib/supabase.adapter";
 
 const COLLECTION: string = "contest";
+const PICTURES_COLLECTION: string = "picture";
 
 const db: IDatabase = new SupabaseAdapter();
 
+const addPictures = async (result: {
+    error: string | null;
+    data: any;
+}): Promise<{
+    error: string | null;
+    data: any;
+}> => {
+    result.data = await Promise.all(
+        result.data.map(async (x: any) => {
+
+            const pictureResult = await db.getBy(PICTURES_COLLECTION, {
+                contest_id: x.id
+            })
+
+            if (pictureResult.error || pictureResult.data.length == 0) return x
+
+            return ({
+                ...x,
+                picture: pictureResult.data?.at(0) // Solo debería haber una
+            })
+        })
+    )
+
+    return result;
+}
+
 export const getAllContests = async (context: Context) => {
-    const result = await db.getAll(COLLECTION);
+
+    const wPicture = new URL(context.request.url).searchParams.get("picture") == '1'
+
+    let result = await db.getAll(COLLECTION);
     if (result.error) return BadRequest(context, result.error);
+
+    if (wPicture) result = await addPictures(result)
 
     return Ok(context, result.data);
 };
 
 export const getOneContest = async (context: Context) => {
-    const result = await db.getBy(COLLECTION, {
+    const wPicture = new URL(context.request.url).searchParams.get("picture") == '1'
+
+    let result = await db.getBy(COLLECTION, {
         id: parseInt(context.params.id),
     });
     if (result.error) return BadRequest(context, result.error);
+
+    if (wPicture) result = await addPictures(result)
 
     return Ok(context, result.data);
 };
@@ -61,3 +97,4 @@ export const deleteContest = async (context: Context) => {
 
     return Ok(context, deleteResult.data);
 };
+
