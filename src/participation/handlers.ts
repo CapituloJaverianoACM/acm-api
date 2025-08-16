@@ -15,13 +15,16 @@ export const getAllParticipations = async (context: Context) => {
 };
 
 export const getOneParticipation = async (context: Context) => {
+    console.log("hola");
+    console.log(context.params);
     const { contest_id, student_id } = context.params;
-
+    console.log("hola1");
     const result = await db.getBy(COLLECTION, {
         contest_id: parseInt(contest_id),
         student_id: parseInt(student_id),
     });
-    if (result.error) return BadRequest(context, "Participation does not exist.");
+    console.log("hola2");
+    if (result.error ) return BadRequest(context, "Participation does not exist.");
 
     return Ok(context, result.data);
 };
