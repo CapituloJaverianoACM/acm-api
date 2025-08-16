@@ -120,5 +120,17 @@ export const IdSupabaseInt4 = t.Object({
 });
 
 export const IdMongoParamSchema = t.Object({
-  id: t.RegExp(/[0-9A-Fa-f]{24}/),
+    id: t.RegExp(/[0-9A-Fa-f]{24}/),
+});
+
+export const CreateParticipationSchema = t.Object({
+    contest_id: t.Number(),
+    student_id: t.Number(),
+    position: t.Optional(t.Nullable(t.Number())),
+    checkin: t.Boolean(),
+});
+
+export const UpdateParticipationSchema = t.Object({
+    position: t.Optional(t.Number()),
+    checkin: t.Optional(t.Boolean()),
 });
