@@ -35,5 +35,5 @@ export const app = new Elysia()
     .listen(Number(process.env.PORT));
 
 console.log(
-    `🦊 Elysia is running at ${app.server?.hostname}:${app.server?.port}`,
+  `🦊 Elysia is running at ${app.server?.hostname}:${app.server?.port}`,
 );

@@ -7,22 +7,19 @@ import {
   createStudent,
   updateStudent,
   deleteStudent,
-} from "./handlers"
-export const students = new Elysia({prefix: "/students"})
-    .state("user", {})
-    .get("/", getAllStudents)
-    .get("/:id", getOneStudent, {
-    })
-    .post("/create", createStudent, {
+} from "./handlers";
+export const students = new Elysia({ prefix: "/students" })
+  .state("user", {})
+  .get("/", getAllStudents)
+  .get("/:id", getOneStudent, {})
+  .post("/create", createStudent, {
     beforeHandle: verifyJWT,
     body: CreateStudentSchema,
-    })
-    .put("/:id", updateStudent, {
+  })
+  .put("/:id", updateStudent, {
     beforeHandle: verifyJWT,
     body: UpdateStudentSchema,
-    })
-    .delete("/:id", deleteStudent, {
+  })
+  .delete("/:id", deleteStudent, {
     beforeHandle: verifyJWT,
-    });
-
-
+  });

@@ -1,9 +1,6 @@
 import Elysia from "elysia";
 import { verifyJWT } from "../utils/auth";
-import {
-  CreatePictureSchema,
-  UpdatePictureSchema,
-} from "../utils/entities";
+import { CreatePictureSchema, UpdatePictureSchema } from "../utils/entities";
 import {
   createPicture,
   deletePicture,

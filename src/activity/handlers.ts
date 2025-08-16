@@ -7,73 +7,73 @@ const COLLECTION: string = "activities";
 const db: IDatabase = new MongoAdapter();
 
 export const getAllActivities = async (context: Context) => {
-    const response = await db.getAll(COLLECTION);
-    if (response.error) return BadRequest(context, "No activities found.");
-    return Ok(context, response.data);
+  const response = await db.getAll(COLLECTION);
+  if (response.error) return BadRequest(context, "No activities found.");
+  return Ok(context, response.data);
 };
 
 export const getOneActivity = async (context: Context) => {
-    const result = await db.getBy(COLLECTION, {
-        _id: context.params.id,
-    });
+  const result = await db.getBy(COLLECTION, {
+    _id: context.params.id,
+  });
 
-    if (result.error) return BadRequest(context, "Do not exist.");
+  if (result.error) return BadRequest(context, "Do not exist.");
 
-    return Ok(context, result.data);
+  return Ok(context, result.data);
 };
 
 export const createActivity = async (context: Context) => {
-    const act = await db.getBy(COLLECTION, {
-        title: context.body.title,
-    });
+  const act = await db.getBy(COLLECTION, {
+    title: context.body.title,
+  });
 
-    if (act.data) return BadRequest(context, "Activity already exist");
+  if (act.data) return BadRequest(context, "Activity already exist");
 
-    const resultInsert = await db.insert(COLLECTION, context.body);
-    if (resultInsert.error) return BadRequest(context, resultInsert.error);
+  const resultInsert = await db.insert(COLLECTION, context.body);
+  if (resultInsert.error) return BadRequest(context, resultInsert.error);
 
-    return Ok(context, resultInsert.data);
+  return Ok(context, resultInsert.data);
 };
 
 export const createManyActivities = async (context: Context) => {
-    const resultInsertMany = await db.insertMany(COLLECTION, context.body);
-    if (resultInsertMany.error)
-        return BadRequest(context, resultInsertMany.error);
+  const resultInsertMany = await db.insertMany(COLLECTION, context.body);
+  if (resultInsertMany.error)
+    return BadRequest(context, resultInsertMany.error);
 
-    return Ok(context, resultInsertMany.data);
+  return Ok(context, resultInsertMany.data);
 };
 
 export const updateActivity = async (context: Context) => {
-    const activityId = context.params.id;
+  const activityId = context.params.id;
 
-    const toUpdt = await db.getBy(COLLECTION, {
-        _id: activityId,
-    });
+  const toUpdt = await db.getBy(COLLECTION, {
+    _id: activityId,
+  });
 
-    if (toUpdt.error) return BadRequest(context, "This activity do not exist.");
+  if (toUpdt.error) return BadRequest(context, "This activity do not exist.");
 
-    const resultUpdate = await db.update(
-        COLLECTION,
-        { _id: activityId },
-        context.body,
-    );
-    if (resultUpdate.error) return BadRequest(context, resultUpdate.error);
+  const resultUpdate = await db.update(
+    COLLECTION,
+    { _id: activityId },
+    context.body,
+  );
+  if (resultUpdate.error) return BadRequest(context, resultUpdate.error);
 
-    return Ok(context, resultUpdate.data);
+  return Ok(context, resultUpdate.data);
 };
 
 export const deleteActivity = async (context: Context) => {
-    const activityId = context.params.id;
-    const toDel = await db.getBy(COLLECTION, {
-        _id: activityId,
-    });
+  const activityId = context.params.id;
+  const toDel = await db.getBy(COLLECTION, {
+    _id: activityId,
+  });
 
-    if (toDel.error) return BadRequest(context, "This activity do not exist.");
+  if (toDel.error) return BadRequest(context, "This activity do not exist.");
 
-    const resultDelete = await db.delete(COLLECTION, {
-        _id: activityId,
-    });
-    if (resultDelete.error) return BadRequest(context, resultDelete.error);
+  const resultDelete = await db.delete(COLLECTION, {
+    _id: activityId,
+  });
+  if (resultDelete.error) return BadRequest(context, resultDelete.error);
 
-    return Ok(context, resultDelete.data);
+  return Ok(context, resultDelete.data);
 };
