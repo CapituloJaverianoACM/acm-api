@@ -1,8 +1,8 @@
 import { Context } from "elysia";
-import { BadRequest, Created, Ok } from "../utils/responses";
-import { IDatabase } from "../lib/database.interface";
-import { SupabaseAdapter } from "../lib/supabase.adapter";
-import { ENTITY_FILTER_SCHEMAS, getEntityFilters } from "../utils/filters";
+import { BadRequest, Created, Ok } from "../../utils/responses";
+import { IDatabase } from "../../db/database.interface";
+import { SupabaseAdapter } from "../../db/supabase/supabase.adapter";
+import { ENTITY_FILTER_SCHEMAS, getEntityFilters } from "../../utils/filters";
 
 const COLLECTION: string = "contest";
 const PICTURES_COLLECTION: string = "picture";

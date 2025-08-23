@@ -1,7 +1,7 @@
 import { Context } from "elysia";
 import { BadRequest, Unauthorized } from "./responses";
-import { IDatabase } from "../lib/database.interface";
-import { MongoAdapter } from "../lib/mongo.adapter";
+import { IDatabase } from "../db/database.interface";
+import { MongoAdapter } from "../db/mongo/mongo.adapter";
 const bcrypt = require("bcryptjs");
 const jwt = require("jsonwebtoken");
 

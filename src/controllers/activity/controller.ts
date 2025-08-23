@@ -1,6 +1,6 @@
 import Elysia, { t } from "elysia";
-import { verifyJWT } from "../utils/auth";
-import { ActivitySchema, UpdateActivitySchema } from "../utils/entities";
+import { verifyJWT } from "../../utils/auth";
+import { ActivitySchema, UpdateActivitySchema } from "../../utils/entities";
 import {
   createActivity,
   createManyActivities,

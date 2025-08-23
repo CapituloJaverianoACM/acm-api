@@ -1,5 +1,5 @@
 import Elysia, { t } from "elysia";
-import { checkSignIn } from "../utils/auth";
+import { checkSignIn } from "../../utils/auth";
 import { loginHandler, verifyHandler } from "./handlers";
 
 export const auth = new Elysia({ prefix: "/auth" })

@@ -1,5 +1,5 @@
 import { ObjectId } from "mongodb";
-import { IDatabase } from "./database.interface";
+import { IDatabase } from "../database.interface";
 import MongoDB from "./mongo";
 
 export class MongoAdapter implements IDatabase {
