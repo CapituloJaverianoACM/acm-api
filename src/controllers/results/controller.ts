@@ -11,8 +11,8 @@ import {
   CreateResultSchema,
   IdSupabaseInt4,
   UpdateResultSchema,
-} from "../utils/entities";
-import { verifyJWT } from "../utils/auth";
+} from "../../utils/entities";
+import { verifyJWT } from "../../utils/auth";
 
 export const results = new Elysia({
   prefix: "/results",

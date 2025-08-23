@@ -1,6 +1,6 @@
 import Elysia from "elysia";
-import { verifyJWT } from "../utils/auth";
-import { CreateContestSchema, UpdateContestSchema } from "../utils/entities";
+import { verifyJWT } from "../../utils/auth";
+import { CreateContestSchema, UpdateContestSchema } from "../../utils/entities";
 import {
   createContest,
   deleteContest,

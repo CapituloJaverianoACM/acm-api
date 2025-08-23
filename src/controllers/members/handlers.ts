@@ -1,8 +1,8 @@
 import { Context } from "elysia";
-import { BadRequest, Ok } from "../utils/responses";
-import { IDatabase } from "../lib/database.interface";
-import { MongoAdapter } from "../lib/mongo.adapter";
-import { ENTITY_FILTER_SCHEMAS, getEntityFilters } from "../utils/filters";
+import { BadRequest, Ok } from "../../utils/responses";
+import { IDatabase } from "../../db/database.interface";
+import { MongoAdapter } from "../../db/mongo/mongo.adapter";
+import { ENTITY_FILTER_SCHEMAS, getEntityFilters } from "../../utils/filters";
 
 const COLLECTION: string = "members";
 const db: IDatabase = new MongoAdapter();

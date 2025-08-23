@@ -1,6 +1,6 @@
 import { Context } from "elysia";
-import { BadRequest, Ok } from "../utils/responses";
-import { checkJWTExp, signJWT } from "../utils/auth";
+import { BadRequest, Ok } from "../../utils/responses";
+import { checkJWTExp, signJWT } from "../../utils/auth";
 
 export const loginHandler = (context: Context) => {
   const token = signJWT(context.store.user);

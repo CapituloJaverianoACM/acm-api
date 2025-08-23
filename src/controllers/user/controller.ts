@@ -1,6 +1,6 @@
 import { Elysia, t } from "elysia";
 import { deleteUserHandler, userPostHandler } from "./handlers";
-import { verifyJWT } from "../utils/auth";
+import { verifyJWT } from "../../utils/auth";
 
 export const user = new Elysia({ prefix: "/users" })
   .state("user", {})

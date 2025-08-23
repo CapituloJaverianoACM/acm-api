@@ -1,5 +1,5 @@
 import Elysia, { t } from "elysia";
-import { verifyJWT } from "../utils/auth";
+import { verifyJWT } from "../../utils/auth";
 import {
   createMember,
   createManyMembers,
@@ -9,7 +9,7 @@ import {
   getOneMember,
   updateMember,
 } from "./handlers";
-import { CreateMemberSchema, UpdateMemberSchema } from "../utils/entities";
+import { CreateMemberSchema, UpdateMemberSchema } from "../../utils/entities";
 
 export const members = new Elysia({ prefix: "/members" })
   .state("user", {})

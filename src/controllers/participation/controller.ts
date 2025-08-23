@@ -1,10 +1,10 @@
 import Elysia, { t } from "elysia";
-import { verifyJWT } from "../utils/auth";
+import { verifyJWT } from "../../utils/auth";
 import {
     CreateParticipationSchema,
     IdSupabaseInt4,
     UpdateParticipationSchema,
-} from "../utils/entities";
+} from "../../utils/entities";
 import {
     createParticipation,
     deleteParticipation,

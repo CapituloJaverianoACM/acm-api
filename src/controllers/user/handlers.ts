@@ -1,7 +1,7 @@
 import { Context } from "elysia";
-import { BadRequest, Ok, Unauthorized } from "../utils/responses";
-import { IDatabase } from "../lib/database.interface";
-import { MongoAdapter } from "../lib/mongo.adapter";
+import { BadRequest, Ok, Unauthorized } from "../../utils/responses";
+import { IDatabase } from "../../db/database.interface";
+import { MongoAdapter } from "../../db/mongo/mongo.adapter";
 const bcrypt = require("bcryptjs");
 
 const COLLECTION = "users";
