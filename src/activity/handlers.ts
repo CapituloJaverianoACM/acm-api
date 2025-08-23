@@ -2,14 +2,21 @@ import { Context } from "elysia";
 import { BadRequest, Ok } from "../utils/responses";
 import { IDatabase } from "../lib/database.interface";
 import { MongoAdapter } from "../lib/mongo.adapter";
+import { ENTITY_FILTER_SCHEMAS, getEntityFilters } from "../utils/filters";
 
 const COLLECTION: string = "activities";
 const db: IDatabase = new MongoAdapter();
 
 export const getAllActivities = async (context: Context) => {
-  const response = await db.getAll(COLLECTION);
-  if (response.error) return BadRequest(context, "No activities found.");
-  return Ok(context, response.data);
+  const { filters, order, suborder, limit, offset } = getEntityFilters(context, COLLECTION as keyof typeof ENTITY_FILTER_SCHEMAS);
+
+  // Si hay filtros, usar getBy, sino usar getAll
+  const result = Object.keys(filters).length > 0
+    ? await db.getBy(COLLECTION, filters, order, suborder, limit, offset)
+    : await db.getAll(COLLECTION, order, suborder, limit, offset);
+
+  if (result.error) return BadRequest(context, result.error);
+  return Ok(context, result.data);
 };
 
 export const getOneActivity = async (context: Context) => {

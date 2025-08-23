@@ -18,6 +18,7 @@ export interface IDatabase {
       asc?: boolean;
     },
     limit?: number,
+    offset?: number,
   ): Promise<{ error: string | null; data: any }>;
   getBy<T>(
     table: string,
@@ -31,6 +32,7 @@ export interface IDatabase {
       asc?: boolean;
     },
     limit?: number,
+    offset?: number,
   ): Promise<{ error: string | null; data: any }>;
   update<T>(
     table: string,
