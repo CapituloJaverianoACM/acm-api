@@ -45,6 +45,7 @@ export default class SupabaseDB {
       asc?: boolean;
     },
     limit?: number,
+    offset?: number,
   ) {
     let req = this.client.from(table).select("*");
 
@@ -60,7 +61,9 @@ export default class SupabaseDB {
       });
     }
 
-    if (limit) {
+    if (offset) {
+      req = req.range(offset, offset + (limit || 1000) - 1);
+    } else if (limit) {
       req = req.limit(limit);
     }
 
@@ -83,6 +86,7 @@ export default class SupabaseDB {
       asc?: boolean;
     },
     limit?: number,
+    offset?: number,
   ) {
     let req = this.client.from(table).select("*").match(query);
 
@@ -98,7 +102,9 @@ export default class SupabaseDB {
       });
     }
 
-    if (limit) {
+    if (offset) {
+      req = req.range(offset, offset + (limit || 1000) - 1);
+    } else if (limit) {
       req = req.limit(limit);
     }
 

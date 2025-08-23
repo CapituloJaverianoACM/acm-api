@@ -8,10 +8,11 @@ import {
   updateStudent,
   deleteStudent,
 } from "./handlers";
+
 export const students = new Elysia({ prefix: "/students" })
   .state("user", {})
   .get("/", getAllStudents)
-  .get("/:id", getOneStudent, {})
+  .get("/:id", getOneStudent)
   .post("/create", createStudent, {
     beforeHandle: verifyJWT,
     body: CreateStudentSchema,

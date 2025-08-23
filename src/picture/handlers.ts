@@ -2,15 +2,21 @@ import { Context } from "elysia";
 import { BadRequest, Created, Ok } from "../utils/responses";
 import { IDatabase } from "../lib/database.interface";
 import { SupabaseAdapter } from "../lib/supabase.adapter";
+import { ENTITY_FILTER_SCHEMAS, getEntityFilters } from "../utils/filters";
 
 const COLLECTION: string = "picture";
 
 const db: IDatabase = new SupabaseAdapter();
 
 export const getAllPictures = async (context: Context) => {
-  const result = await db.getAll(COLLECTION);
-  if (result.error) return BadRequest(context, result.error);
+  const { filters, order, suborder, limit, offset } = getEntityFilters(context, COLLECTION as keyof typeof ENTITY_FILTER_SCHEMAS);
 
+  // Si hay filtros, usar getBy, sino usar getAll
+  const result = Object.keys(filters).length > 0
+    ? await db.getBy(COLLECTION, filters, order, suborder, limit, offset)
+    : await db.getAll(COLLECTION, order, suborder, limit, offset);
+
+  if (result.error) return BadRequest(context, result.error);
   return Ok(context, result.data);
 };
 

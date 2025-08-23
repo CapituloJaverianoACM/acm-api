@@ -23,8 +23,9 @@ export class SupabaseAdapter implements IDatabase {
       asc?: boolean;
     },
     limit?: number,
+    offset?: number,
   ) {
-    return this.db.getAll(table, order, suborder, limit);
+    return this.db.getAll(table, order, suborder, limit, offset);
   }
 
   async getBy<T>(
@@ -39,8 +40,9 @@ export class SupabaseAdapter implements IDatabase {
       asc?: boolean;
     },
     limit?: number,
+    offset?: number,
   ) {
-    return this.db.getBy<T>(table, query, order, suborder, limit);
+    return this.db.getBy<T>(table, query, order, suborder, limit, offset);
   }
 
   async update<T>(table: string, query: Partial<T>, data: Partial<T>) {

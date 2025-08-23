@@ -2,51 +2,19 @@ import { Context } from "elysia";
 import { BadRequest, Created, Ok } from "../utils/responses";
 import { IDatabase } from "../lib/database.interface";
 import { SupabaseAdapter } from "../lib/supabase.adapter";
+import { ENTITY_FILTER_SCHEMAS, getEntityFilters } from "../utils/filters";
 
 const COLLECTION: string = "student";
 const db: IDatabase = new SupabaseAdapter();
 
-const getOrderAndLimitSParams = (context: Context) => {
-  const limitParam = new URL(context.request.url).searchParams.get("limit");
-  const limit = limitParam ? Number(limitParam) : undefined;
-
-  const ordercolParam = new URL(context.request.url).searchParams.get(
-    "ordercol",
-  );
-  const ordercol = ordercolParam || undefined;
-
-  const subordercolParam = new URL(context.request.url).searchParams.get(
-    "subordercol",
-  );
-  const subordercol = subordercolParam || undefined;
-
-  const ascParam = new URL(context.request.url).searchParams.get("asc");
-  const asc = ascParam == "1";
-
-  const subascParam = new URL(context.request.url).searchParams.get("subasc");
-  const subasc = subascParam == "1";
-
-  return {
-    order: ordercol
-      ? {
-          column: ordercol,
-          asc,
-        }
-      : undefined,
-    suborder: subordercol
-      ? {
-          column: subordercol,
-          asc: subasc,
-        }
-      : undefined,
-    limit,
-  };
-};
-
 export const getAllStudents = async (context: Context) => {
-  const { order, suborder, limit } = getOrderAndLimitSParams(context);
+  const { filters, order, suborder, limit, offset } = getEntityFilters(context, COLLECTION as keyof typeof ENTITY_FILTER_SCHEMAS);
 
-  const result = await db.getAll(COLLECTION, order, suborder, limit);
+  // Si hay filtros, usar getBy, sino usar getAll
+  const result = Object.keys(filters).length > 0
+    ? await db.getBy(COLLECTION, filters, order, suborder, limit, offset)
+    : await db.getAll(COLLECTION, order, suborder, limit, offset);
+
   if (result.error) return BadRequest(context, result.error);
   return Ok(context, result.data);
 };
