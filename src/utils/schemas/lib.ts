@@ -2,6 +2,7 @@ import { t } from "elysia";
 
 export const NumericString = t.String({
   pattern: "^[0-9]+$",
+  default: "",
   description: "Supabase ID must be numeric",
 });
 
