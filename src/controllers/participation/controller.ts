@@ -18,8 +18,14 @@ import {
 export const participation = new Elysia({ prefix: "/participation" })
     .state("user", {})
     .get("/", getAllParticipations)
-    .get("/contest/:contest_id", getParticipationsByContestId, { params: IdSupabaseInt4 })
-    .get("/student/:student_id", getParticipationsByStudentId, { params: IdSupabaseInt4 })
+    .get("/contest/:contest_id", getParticipationsByContestId, 
+        { params: t.Object({
+            contest_id: t.Number()
+        }) })
+    .get("/student/:student_id", getParticipationsByStudentId, 
+        { params: t.Object({
+            student_id: t.Number()
+        }) })
     .get("/:contest_id/:student_id", getOneParticipation, {
         params: t.Object({
             contest_id: t.Number(),
