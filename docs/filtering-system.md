@@ -84,30 +84,35 @@ GET /contests?date=2024-01-15
 ## Tipos de datos soportados
 
 ### Strings
+
 ```bash
 GET /students?name=Juan
 GET /members?role=President
 ```
 
 ### Numbers
+
 ```bash
 GET /students?matches_count=10
 GET /students?victory_count=5
 ```
 
 ### Booleans
+
 ```bash
 GET /members?active=true
 GET /members?active=false
 ```
 
 ### Enums
+
 ```bash
 GET /students?level=Advanced
 GET /students?level=Initial
 ```
 
 ### Dates (ISO strings)
+
 ```bash
 GET /contests?date=2024-01-15T00:00:00Z
 ```

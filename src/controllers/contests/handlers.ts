@@ -38,12 +38,16 @@ export const getAllContests = async (context: Context) => {
   const wPicture =
     new URL(context.request.url).searchParams.get("picture") == "1";
 
-  const { filters, order, suborder, limit, offset } = getEntityFilters(context, COLLECTION as keyof typeof ENTITY_FILTER_SCHEMAS);
+  const { filters, order, suborder, limit, offset } = getEntityFilters(
+    context,
+    COLLECTION as keyof typeof ENTITY_FILTER_SCHEMAS,
+  );
 
   // Si hay filtros, usar getBy, sino usar getAll
-  let result = Object.keys(filters).length > 0
-    ? await db.getBy(COLLECTION, filters, order, suborder, limit, offset)
-    : await db.getAll(COLLECTION, order, suborder, limit, offset);
+  let result =
+    Object.keys(filters).length > 0
+      ? await db.getBy(COLLECTION, filters, order, suborder, limit, offset)
+      : await db.getAll(COLLECTION, order, suborder, limit, offset);
 
   if (result.error) return BadRequest(context, result.error);
 

@@ -9,10 +9,11 @@ import {
 } from "./handlers";
 import {
   CreateResultSchema,
-  IdSupabaseInt4,
   UpdateResultSchema,
-} from "../../utils/entities";
+} from "../../utils/schemas/result";
+
 import { verifyJWT } from "../../utils/auth";
+import { IdSupabaseInt4 } from "../../utils/schemas/lib";
 
 export const results = new Elysia({
   prefix: "/results",
