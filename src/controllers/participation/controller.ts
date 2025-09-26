@@ -5,7 +5,7 @@ import {
   UpdateParticipationSchema,
 } from "../../utils/schemas/participation";
 
-import { IdSupabaseInt4, NumericString } from "../../utils/schemas/lib";
+import { NumericString } from "../../utils/schemas/lib";
 
 import {
   createParticipation,
