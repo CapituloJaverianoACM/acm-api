@@ -1,12 +1,17 @@
 import Elysia from "elysia";
 import { verifyJWT } from "../../utils/auth";
-import { CreateStudentSchema, UpdateStudentSchema } from "../../utils/entities";
+import {
+  CreateStudentSchema,
+  UpdateStudentSchema,
+  BulkIdQuery,
+} from "../../utils/schemas/student";
 import {
   getAllStudents,
   getOneStudent,
   createStudent,
   updateStudent,
   deleteStudent,
+  getStudentsBulkId,
 } from "./handlers";
 
 export const students = new Elysia({ prefix: "/students" })
@@ -16,6 +21,9 @@ export const students = new Elysia({ prefix: "/students" })
   .post("/create", createStudent, {
     beforeHandle: verifyJWT,
     body: CreateStudentSchema,
+  })
+  .post("/bulk-query/id", getStudentsBulkId, {
+    body: BulkIdQuery,
   })
   .put("/:id", updateStudent, {
     beforeHandle: verifyJWT,

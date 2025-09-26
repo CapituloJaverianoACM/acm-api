@@ -1,4 +1,4 @@
-import { IDatabase } from "./database.interface";
+import { IDatabase } from "../database.interface";
 import SupabaseDB from "./supabase";
 
 export class SupabaseAdapter implements IDatabase {
@@ -51,5 +51,12 @@ export class SupabaseAdapter implements IDatabase {
 
   async delete<T>(table: string, query: Partial<T>) {
     return this.db.delete<T>(table, query);
+  }
+  async getMultiple(
+    table: string,
+    column: string,
+    options: any[],
+  ): Promise<{ error: string | null; data: any }> {
+    return this.db.getMultiple(table, column, options);
   }
 }

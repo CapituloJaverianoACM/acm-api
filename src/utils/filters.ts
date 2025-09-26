@@ -6,7 +6,7 @@ import {
   ActivityFilterSchema,
   PictureFilterSchema,
   ResultFilterSchema,
-  ParticipationFilterSchema
+  ParticipationFilterSchema,
 } from "./filter-schemas";
 
 export interface FilterOptions {
@@ -41,7 +41,7 @@ export const ENTITY_FILTER_SCHEMAS = {
  */
 export const getEntityFilters = (
   context: Context,
-  entityName: keyof typeof ENTITY_FILTER_SCHEMAS
+  entityName: keyof typeof ENTITY_FILTER_SCHEMAS,
 ): FilterOptions => {
   const url = new URL(context.request.url);
   const searchParams = url.searchParams;
@@ -55,21 +55,24 @@ export const getEntityFilters = (
 
   // Extraer todos los campos del schema excepto los de paginación y ordenamiento
   const schemaFields = Object.keys(entitySchema.properties || {});
-  const filterFields = schemaFields.filter(field =>
-    !['limit', 'offset', 'ordercol', 'subordercol', 'asc', 'subasc'].includes(field)
+  const filterFields = schemaFields.filter(
+    (field) =>
+      !["limit", "offset", "ordercol", "subordercol", "asc", "subasc"].includes(
+        field,
+      ),
   );
 
   // Extraer filtros específicos de la entidad
-  filterFields.forEach(filterName => {
+  filterFields.forEach((filterName) => {
     const value = searchParams.get(filterName);
     if (value !== null) {
       // Intentar convertir a número si es posible
       const numValue = Number(value);
-      if (!isNaN(numValue) && value !== '') {
+      if (!isNaN(numValue) && value !== "") {
         filters[filterName] = numValue;
-      } else if (value.toLowerCase() === 'true') {
+      } else if (value.toLowerCase() === "true") {
         filters[filterName] = true;
-      } else if (value.toLowerCase() === 'false') {
+      } else if (value.toLowerCase() === "false") {
         filters[filterName] = false;
       } else {
         filters[filterName] = value;
@@ -114,4 +117,3 @@ export const getEntityFilters = (
     offset,
   };
 };
-

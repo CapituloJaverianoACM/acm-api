@@ -34,6 +34,13 @@ export interface IDatabase {
     limit?: number,
     offset?: number,
   ): Promise<{ error: string | null; data: any }>;
+
+  getMultiple(
+    table: string,
+    column: string,
+    options: any[],
+  ): Promise<{ error: string | null; data: any }>;
+
   update<T>(
     table: string,
     query: Partial<T>,

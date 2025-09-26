@@ -34,6 +34,19 @@ export default class SupabaseDB {
     return this.assembleResponse(error, result);
   }
 
+  public async getMultiple(
+    table: string,
+    column: string,
+    options: any[],
+  ): Promise<{ error: string | null; data: any }> {
+    const { data: result, error } = await this.client
+      .from(table)
+      .select("*")
+      .in(column, options);
+
+    return this.assembleResponse(error, result);
+  }
+
   public async getAll(
     table: string,
     order?: {
