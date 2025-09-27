@@ -108,3 +108,11 @@ export const deleteContest = async (context: Context) => {
 
   return Ok(context, deleteResult.data);
 };
+
+export const getContestsBulkId = async (context: Context) => {
+  const options = context.body.ids;
+
+  const result = await db.getMultiple(COLLECTION, "id", options);
+  if (result.error) return BadRequest(context, result.error);
+  return Ok(context, result.data);
+};
