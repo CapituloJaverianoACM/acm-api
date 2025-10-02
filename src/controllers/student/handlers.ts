@@ -39,6 +39,8 @@ export const getStudentBySupabase = async (context: Context) => {
   });
 
   if (result.error) return BadRequest(context, result.error);
+
+  return Ok(context, result.data)
 }
 
 export const createStudent = async (context: Context) => {
