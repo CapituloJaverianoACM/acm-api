@@ -12,14 +12,14 @@ import {
   updateStudent,
   deleteStudent,
   getStudentsBulkId,
-  getStudentBySupabase,
+  getStudentBySupabaseId,
 } from "./handlers";
 
 export const students = new Elysia({ prefix: "/students" })
   .state("user", {})
   .get("/", getAllStudents)
   .get("/:id", getOneStudent)
-  .get("/supabase/:id", getStudentBySupabase)
+  .get("/supabase/:id", getStudentBySupabaseId)
   .post("/create", createStudent, {
     beforeHandle: verifyJWT,
     body: CreateStudentSchema,

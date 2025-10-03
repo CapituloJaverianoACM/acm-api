@@ -33,7 +33,7 @@ export const getOneStudent = async (context: Context) => {
   return Ok(context, result.data);
 };
 
-export const getStudentBySupabase = async (context: Context) => {
+export const getStudentBySupabaseId = async (context: Context) => {
   const result = await db.getBy(COLLECTION, {
     supabase_user_id: context.params.id
   });
