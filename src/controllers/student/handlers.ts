@@ -33,6 +33,16 @@ export const getOneStudent = async (context: Context) => {
   return Ok(context, result.data);
 };
 
+export const getStudentBySupabaseId = async (context: Context) => {
+  const result = await db.getBy(COLLECTION, {
+    supabase_user_id: context.params.id
+  });
+
+  if (result.error) return BadRequest(context, result.error);
+
+  return Ok(context, result.data)
+}
+
 export const createStudent = async (context: Context) => {
   const insertMember = await db.insert(COLLECTION, context.body);
 
