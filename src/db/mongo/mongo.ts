@@ -1,5 +1,5 @@
 import { Db, MongoClient, ServerApiVersion } from "mongodb";
-const URI = `mongodb+srv://${process.env.MONGO_USER}:${process.env.MONGO_PASSWORD}@acm-api.437po.mongodb.net/?retryWrites=true&w=majority&appName=acm-api`;
+const URI = process.env.MONGO_URI || "";
 
 export default class MongoDB {
   private client: MongoClient;
