@@ -59,4 +59,13 @@ export class MongoAdapter implements IDatabase {
   async delete<T>(collection: string, query: Partial<T>) {
     return this.db.deleteOneDocument(collection, query);
   }
+
+  async getMultiple(
+    table: string,
+    column: string,
+    options: any[],
+  ): Promise<{ error: string | null; data: any }> {
+    // TODO: Hay que implementarlo cuando se necesite, creo que por ahora no hay necesidad.
+    throw new Error("Method not implemented.");
+  }
 }

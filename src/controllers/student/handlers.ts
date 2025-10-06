@@ -8,12 +8,16 @@ const COLLECTION: string = "student";
 const db: IDatabase = new SupabaseAdapter();
 
 export const getAllStudents = async (context: Context) => {
-  const { filters, order, suborder, limit, offset } = getEntityFilters(context, COLLECTION as keyof typeof ENTITY_FILTER_SCHEMAS);
+  const { filters, order, suborder, limit, offset } = getEntityFilters(
+    context,
+    COLLECTION as keyof typeof ENTITY_FILTER_SCHEMAS,
+  );
 
   // Si hay filtros, usar getBy, sino usar getAll
-  const result = Object.keys(filters).length > 0
-    ? await db.getBy(COLLECTION, filters, order, suborder, limit, offset)
-    : await db.getAll(COLLECTION, order, suborder, limit, offset);
+  const result =
+    Object.keys(filters).length > 0
+      ? await db.getBy(COLLECTION, filters, order, suborder, limit, offset)
+      : await db.getAll(COLLECTION, order, suborder, limit, offset);
 
   if (result.error) return BadRequest(context, result.error);
   return Ok(context, result.data);
@@ -28,6 +32,16 @@ export const getOneStudent = async (context: Context) => {
 
   return Ok(context, result.data);
 };
+
+export const getStudentBySupabaseId = async (context: Context) => {
+  const result = await db.getBy(COLLECTION, {
+    supabase_user_id: context.params.id
+  });
+
+  if (result.error) return BadRequest(context, result.error);
+
+  return Ok(context, result.data)
+}
 
 export const createStudent = async (context: Context) => {
   const insertMember = await db.insert(COLLECTION, context.body);
@@ -65,6 +79,14 @@ export const deleteStudent = async (context: Context) => {
     id: parseInt(context.params.id),
   });
 
+  if (result.error) return BadRequest(context, result.error);
+  return Ok(context, result.data);
+};
+
+export const getStudentsBulkId = async (context: Context) => {
+  const options = context.body.ids;
+
+  const result = await db.getMultiple(COLLECTION, "id", options);
   if (result.error) return BadRequest(context, result.error);
   return Ok(context, result.data);
 };

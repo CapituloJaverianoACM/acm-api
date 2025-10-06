@@ -1,5 +1,5 @@
 import { t } from "elysia";
-import { LevelEnum } from "./entities";
+import { LevelEnum } from "./schemas/contest";
 
 const FilterBaseSchema = {
   limit: t.Optional(t.Number()),
@@ -10,10 +10,11 @@ const FilterBaseSchema = {
   subasc: t.Optional(t.Boolean()),
 };
 
-const createFilterSchema = (additionalFields: Record<string, any>) => t.Object({
-  ...FilterBaseSchema,
-  ...additionalFields,
-});
+const createFilterSchema = (additionalFields: Record<string, any>) =>
+  t.Object({
+    ...FilterBaseSchema,
+    ...additionalFields,
+  });
 
 export const StudentFilterSchema = createFilterSchema({
   name: t.Optional(t.String()),

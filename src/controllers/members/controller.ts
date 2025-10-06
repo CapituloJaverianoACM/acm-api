@@ -9,7 +9,10 @@ import {
   getOneMember,
   updateMember,
 } from "./handlers";
-import { CreateMemberSchema, UpdateMemberSchema } from "../../utils/entities";
+import {
+  CreateMemberSchema,
+  UpdateMemberSchema,
+} from "../../utils/schemas/member";
 
 export const members = new Elysia({ prefix: "/members" })
   .state("user", {})

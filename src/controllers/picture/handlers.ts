@@ -9,12 +9,16 @@ const COLLECTION: string = "picture";
 const db: IDatabase = new SupabaseAdapter();
 
 export const getAllPictures = async (context: Context) => {
-  const { filters, order, suborder, limit, offset } = getEntityFilters(context, COLLECTION as keyof typeof ENTITY_FILTER_SCHEMAS);
+  const { filters, order, suborder, limit, offset } = getEntityFilters(
+    context,
+    COLLECTION as keyof typeof ENTITY_FILTER_SCHEMAS,
+  );
 
   // Si hay filtros, usar getBy, sino usar getAll
-  const result = Object.keys(filters).length > 0
-    ? await db.getBy(COLLECTION, filters, order, suborder, limit, offset)
-    : await db.getAll(COLLECTION, order, suborder, limit, offset);
+  const result =
+    Object.keys(filters).length > 0
+      ? await db.getBy(COLLECTION, filters, order, suborder, limit, offset)
+      : await db.getAll(COLLECTION, order, suborder, limit, offset);
 
   if (result.error) return BadRequest(context, result.error);
   return Ok(context, result.data);
