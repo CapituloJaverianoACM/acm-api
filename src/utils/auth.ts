@@ -2,15 +2,15 @@ import { Context } from "elysia";
 import { BadRequest, Unauthorized } from "./responses";
 import { IDatabase } from "../db/database.interface";
 import { MongoAdapter } from "../db/mongo/mongo.adapter";
+import SupabaseDB from "../db/supabase/supabase";
 const bcrypt = require("bcryptjs");
 const jwt = require("jsonwebtoken");
 
-export const checkJWTExp = (token: string) => {
+export const checkJWTExp = (token: string): any | null => {
   try {
-    jwt.verify(token, Bun.env.JWT_SECRET);
-    return true;
+    return jwt.verify(token, Bun.env.JWT_SECRET);
   } catch (e) {
-    return false;
+    return null;
   }
 };
 export const signJWT = (payload: any) => {
@@ -24,18 +24,21 @@ export const signJWT = (payload: any) => {
   );
 };
 
-export const verifyJWT = (context: Context) => {
+export const verifyJWT = async (context: Context) => {
   const auth: string | null = context.request.headers.get("authorization");
   if (!auth) return Unauthorized(context, "No Bearer JWT");
   const [type, token] = auth.split(" ");
 
   if (type !== "Bearer") return Unauthorized(context, "Malformed Bearer token");
   let decoded = null;
-  try {
-    decoded = jwt.verify(token, Bun.env.JWT_SECRET);
-  } catch (err) {
-    return BadRequest(context, err);
+  /*/ acm-auth-signed-supabase */
+  if( context.request.headers.get("acm-auth-signed-supabase")) {
+    decoded = await SupabaseDB.getInstance().verifySignedJWT(token)
   }
+  else{
+    decoded = checkJWTExp(token);
+  }
+  if(!decoded) return Unauthorized(context, "Token isn't valid");
 
   context.store.user = decoded;
 };

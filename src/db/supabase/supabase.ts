@@ -1,4 +1,4 @@
-import { createClient, SupabaseClient } from "@supabase/supabase-js";
+import { createClient, SupabaseClient, User } from "@supabase/supabase-js";
 
 export default class SupabaseDB {
   private static instance: SupabaseDB | null = null;
@@ -150,5 +150,10 @@ export default class SupabaseDB {
   private assembleResponse(error: any, data: any) {
     if (error) return { error: error.message || "Unknown error", data: null };
     return { error: null, data };
+  }
+
+  public async verifySignedJWT(token: string): Promise<User | null> {
+    const { data } = await this.client.auth.getUser(token);
+    return data.user; 
   }
 }
