@@ -55,4 +55,21 @@ export class ContestTreeNode implements ContestTreeNodeType {
         if (this.right) this.right.printTree(prefix + (isLeft ? "│   " : "    "), false);
     }
 
+    findNode(id_participant: number): ContestTreeNode | null {
+        if (this.id_participant === id_participant) return this;
+        let foundNode: ContestTreeNode | null = null;
+        if (this.left) foundNode = this.left.findNode(id_participant);
+        if (foundNode) return foundNode;
+        if (this.right) foundNode = this.right.findNode(id_participant);
+        return foundNode;
+    }
+
+    public set_winner(id_participant: number): void {
+        // Find the node with the given participant ID
+        const node = this.findNode(id_participant);
+        if (!node || !node.parent) return; // Node not found or is root
+
+        // Set the parent's participant ID to the winner's ID
+        node.parent.id_participant = id_participant;
+    }
 }
