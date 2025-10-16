@@ -14,7 +14,7 @@ export class ContestTreeNode implements ContestTreeNodeType {
         this.id_participant = id_participant;
     }
 
-    createTree(ids_participants: number[]): void {
+    public createTree(ids_participants: number[]): void {
         // Create a complete binary tree and assign participant IDs to the leaves
         const depth = Math.ceil(Math.log2(ids_participants.length + 1)) - 1;
         this.createTreeRecursive(depth);
@@ -47,6 +47,12 @@ export class ContestTreeNode implements ContestTreeNodeType {
         this.right.parent = this;
         this.left.createTreeRecursive(depth - 1);
         this.right.createTreeRecursive(depth - 1);
+    }
+
+    printTree(prefix: string = "", isLeft: boolean = true): void {
+        console.log(prefix + (isLeft ? "├── " : "└── ") + (this.id_participant !== undefined ? this.id_participant : "null"));
+        if (this.left) this.left.printTree(prefix + (isLeft ? "│   " : "    "), true);
+        if (this.right) this.right.printTree(prefix + (isLeft ? "│   " : "    "), false);
     }
 
 }
