@@ -38,6 +38,7 @@ export const getAllContestTrees = async (context: Context) => {
     return data;
 };
 
+
 // Crud - Read by contest id
 
 export const getContestTreeByContestId = async (contest_id: number): Promise<ContestTree | null> => {
