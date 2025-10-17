@@ -11,6 +11,8 @@ import { pictures } from "./controllers/picture/controller";
 import { results } from "./controllers/results/controller";
 import { students } from "./controllers/student/controller";
 import { participation } from "./controllers/participation/controller";
+import { matchmaking } from "./controllers/matchmaking/controller";
+import contestTreesCache from "./utils/contest-tree/contest-trees-cache";
 
 export const app = new Elysia()
   .use(
@@ -31,8 +33,10 @@ export const app = new Elysia()
   .use(students)
   .use(pictures)
   .use(participation)
+  .use(matchmaking)
   .get("/ping", () => "Pong! From Xaverian ACM Chapter")
-  .listen(Number(process.env.PORT));
+  .listen(Number(process.env.PORT))
+  .state("contest-trees-cache", contestTreesCache);
 
 console.log(
   `🦊 Elysia is running at ${app.server?.hostname}:${app.server?.port}`,
