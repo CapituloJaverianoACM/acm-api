@@ -2,9 +2,11 @@ import { Context } from "elysia";
 import { IDatabase } from "../../db/database.interface";
 import { MongoAdapter } from "../../db/mongo/mongo.adapter";
 import { ContestTree } from "../../utils/contest-tree/contest-tree-schema";
+import ContestTreesCache from "../../utils/contest-tree/contest-trees-cache";
 
 const COLLECTION: string = "matchmaking";
 const db: IDatabase = new MongoAdapter();
+const cache = ContestTreesCache.getInstance();
 
 // Crud - Create
 
@@ -39,15 +41,22 @@ export const getAllContestTrees = async (context: Context) => {
 // Crud - Read by contest id
 
 export const getContestTreeByContestId = async (contest_id: number) => {
+    let cacheTree = cache.getByContest(contest_id);
+    if (cacheTree) {
+        return cacheTree;
+    }
     const result = await db.getBy(COLLECTION, { contest_id });
     if (result.error) return null;
+    console.log(cache.count_call(result.data));
     return result.data;
 }
 
 // Crud - read by rank id
 
 export const getContestTreeByRankId = async (rank_id: string) => {
-  const result = await db.getBy(COLLECTION, { rank_id });
-  if (result.error) return null;
-  return result.data;
+    const result = await db.getBy(COLLECTION, { rank_id });
+    if (result.error) return null;
+    
+    cache.count_call(result.data);
+    return result.data;
 }

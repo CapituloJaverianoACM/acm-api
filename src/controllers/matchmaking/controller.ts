@@ -1,6 +1,4 @@
 import Elysia, {t} from "elysia";
-import ContestTreesCache from "../../utils/contest-tree/contest-trees-cache";
-import { MongoAdapter } from "../../db/mongo/mongo.adapter";
 import { createContestTree, getAllContestTrees, getContestTreeByContestId, getContestTreeByRankId } from "./handlers";
 import { ContestTreeSchema } from "../../utils/contest-tree/contest-tree-schema";
 
