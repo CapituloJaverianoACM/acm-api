@@ -40,14 +40,14 @@ export const getAllContestTrees = async (context: Context) => {
 
 // Crud - Read by contest id
 
-export const getContestTreeByContestId = async (contest_id: number) => {
+export const getContestTreeByContestId = async (contest_id: number): Promise<ContestTree | null> => {
     let cacheTree = cache.getByContest(contest_id);
     if (cacheTree) {
         return cacheTree;
     }
     const result = await db.getBy(COLLECTION, { contest_id });
     if (result.error) return null;
-    console.log(cache.count_call(result.data));
+    cache.count_call(result.data);
     return result.data;
 }
 
@@ -56,7 +56,25 @@ export const getContestTreeByContestId = async (contest_id: number) => {
 export const getContestTreeByRankId = async (rank_id: string) => {
     const result = await db.getBy(COLLECTION, { rank_id });
     if (result.error) return null;
-    
     cache.count_call(result.data);
     return result.data;
 }
+
+// Crud - update by contest id
+
+export const updateContestTreeByContestId = async (contest_id: number, updatedData: ContestTree) => {
+    const result = await db.update(COLLECTION, { contest_id }, updatedData);
+    if (result.error) return null;
+    cache.updateStoredTree(updatedData);
+    return result.data;
+}
+
+// Crud - update by rank id
+
+export const updateContestTreeByRankId = async (rank_id: string, updatedData: ContestTree) => {
+    const result = await db.update(COLLECTION, { rank_id }, updatedData);
+    if (result.error) return null;
+    cache.updateStoredTree(updatedData);
+    return result.data;
+};
+

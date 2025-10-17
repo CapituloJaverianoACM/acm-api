@@ -28,6 +28,18 @@ export class ContestTreeNode implements ContestTreeNodeType {
         }
     }
 
+    public rebuildTree(nodeData: any): ContestTreeNode | undefined {
+        if (!nodeData) return undefined;
+        this.left = this.rebuildTree(nodeData.left);
+        this.right = this.rebuildTree(nodeData.right);
+
+        if (this.left) this.left.parent = this;
+        if (this.right) this.right.parent = this;
+
+        return this;
+        }
+
+
     collectLeaves(node: ContestTreeNode | undefined, leaves: ContestTreeNode[]): void {
         if (!node) return;
         if (!node.left && !node.right) {

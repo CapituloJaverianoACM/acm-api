@@ -15,7 +15,6 @@ class ContestTreesCache {
   public static getInstance(): ContestTreesCache {
     if (!ContestTreesCache.instance) {
       ContestTreesCache.instance = new ContestTreesCache();
-      console.log("🧩 ContestCache inicializado");
     }
     return ContestTreesCache.instance;
   }
@@ -50,6 +49,13 @@ class ContestTreesCache {
       this.add(contestTree);
     }
     return this.call_counter[contestTree.rank_id];
+  }
+
+  public updateStoredTree(updatedTree: ContestTree): void {
+    const index = this.cache.findIndex((t) => t.contest_id === updatedTree.contest_id);
+    if (index !== -1) {
+      this.cache[index] = updatedTree;
+    }
   }
 
   public clear(): void {
