@@ -33,14 +33,9 @@ export const verifyJWT = async (context: Context) => {
     let decoded = null;
     /*/ acm-auth-signed-supabase */
     if (context.request.headers.get("acm-auth-signed-supabase")) {
-        const [base_type, token_base_64] = token.split("-");
-        if (base_type === "base64") {
-            const token_str_json: string = atob(token_base_64); // decode base 64
-            const { access_token }: any = JSON.parse(token_str_json);
-            decoded = await SupabaseDB.getInstance().verifySignedJWT(access_token)
-            if (decoded != null) {
-                decoded = { email: decoded.email! };
-            }
+        decoded = await SupabaseDB.getInstance().verifySignedJWT(token)
+        if (decoded != null) {
+            decoded = { email: decoded.email! };
         }
     }
     else {
