@@ -7,6 +7,7 @@ export const CreateStudentSchema = t.Object({
   matches_count: t.Number(),
   victory_count: t.Number(),
   level: t.Enum(LevelEnum),
+  avatar: t.String(),
 });
 
 export const UpdateStudentSchema = t.Object({
@@ -15,6 +16,7 @@ export const UpdateStudentSchema = t.Object({
   matches_count: t.Optional(t.Number()),
   victory_count: t.Optional(t.Number()),
   level: t.Optional(t.Enum(LevelEnum)),
+  avatar: t.Optional(t.String()),
 });
 
 export const BulkIdQuery = t.Object({
