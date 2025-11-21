@@ -4,6 +4,9 @@ import { IDatabase } from "../../db/database.interface";
 import { SupabaseAdapter } from "../../db/supabase/supabase.adapter";
 import { CreateResultSchema, UpdateResultSchema } from "../../utils/entities";
 import { ENTITY_FILTER_SCHEMAS, getEntityFilters } from "../../utils/filters";
+import ContestTreesCache from "../../utils/contest-tree/contest-trees-cache";
+import { getContestTreeByContestId } from "../matchmaking/handlers";
+import { ContestTreeNode } from "../../utils/contest-tree/contest-tree-node-class";
 
 const COLLECTION: string = "results";
 
@@ -53,7 +56,7 @@ export const createResult = async (
     body: typeof CreateResultSchema;
   },
 ) => {
-  const { local_id, visitant_id, winner_id } = context.body;
+  const { contest_id, local_id, visitant_id, winner_id } = context.body;
 
   if (local_id == visitant_id)
     return BadRequest(context, "Visitant and Local are the same.");
@@ -61,10 +64,17 @@ export const createResult = async (
     return BadRequest(context, "Neither visitant or local is the winner");
 
   const result = await db.insert(COLLECTION, context.body);
+  getContestTreeByContestId(contest_id).then((contestTree) => {
+    if (contestTree) {
+      let tree = new ContestTreeNode();
+      tree.rebuildTree(contestTree.tree);
+      tree.set_winner(winner_id);
+    }
 
   if (result.error) return BadRequest(context, result.error);
 
   return Created(context, result.data);
+  });
 };
 
 export const updateResult = async (
