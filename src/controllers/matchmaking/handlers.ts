@@ -3,7 +3,7 @@ import { IDatabase } from "../../db/database.interface";
 import { MongoAdapter } from "../../db/mongo/mongo.adapter";
 import { SupabaseAdapter } from "../../db/supabase/supabase.adapter";
 import { BadRequest, Ok, ServerError } from "../../utils/responses";
-import { makeMatches, MatchmakingTreeNode } from "../../utils/matchmaking-tree";
+import { makeMatches, MatchmakingTreeNode, shuffle_array } from "../../utils/matchmaking-tree";
 
 const COLLECTION: string = "matchmaking";
 const PARTICIPATION_COLLECTION: string = "participation";
@@ -30,6 +30,8 @@ export const createMatchmaking = async (context: Context) => {
 
     if (participants.length == 0)
         return BadRequest(context, "There isn't any participants for this contest");
+
+    shuffle_array(participants);
 
     const tree: MatchmakingTreeNode | null = makeMatches(
         participants,

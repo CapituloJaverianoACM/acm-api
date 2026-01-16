@@ -1,3 +1,16 @@
+export const shuffle_array = (array: Array<unknown>) => {
+  let currentIndex = array.length;
+
+  while (currentIndex != 0) {
+
+    let randomIndex = Math.floor(Math.random() * currentIndex);
+    currentIndex--;
+
+    [array[currentIndex], array[randomIndex]] = [
+      array[randomIndex], array[currentIndex]];
+  }
+}
+
 export type MatchmakingTreeNode = {
     student_id: null | number;
     left: null | MatchmakingTreeNode;
