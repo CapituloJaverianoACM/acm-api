@@ -19,7 +19,7 @@ export const app = new Elysia()
       origin: [process.env.FRONTEND_URL_DEV!, process.env.FRONTEND_URL!],
       credentials: true,
       methods: ["GET", "POST", "PUT", "DELETE"],
-      allowedHeaders: ["Content-Type", "Authorization"],
+      allowedHeaders: ["Content-Type", "Authorization", "acm-auth-signed-supabase"],
     }),
   )
   .use(swagger())
