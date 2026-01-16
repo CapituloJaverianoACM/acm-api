@@ -15,22 +15,17 @@ export async function getTreeByContestId(contestId: number) {
         catcheContestTree.set(contestId, node);
         return node;
     }
-    else {
-        const result = await db.getBy(COLLECTION, { contestId: contestId });
-        if (!result.error && result.data.length > 0) {
-            const treeData = result.data[0].tree;
-            const rootNode = treeData as MatchmakingTreeNode;
-            catcheContestTree.set(contestId, rootNode);
-            if (catcheContestTree.size > 5) {
-                // Delete oldest cache
-                const firstKey = catcheContestTree.keys().next().value;
-                if (firstKey !== undefined)
-                    catcheContestTree.delete(firstKey);
-            }
-            return rootNode;
-        } else {
-            return null;
+    const result = await db.getBy(COLLECTION, { contest_id: contestId });
+    if (!result.error) {
+        const treeData = result.data.tree;
+        const rootNode = treeData as MatchmakingTreeNode;
+        catcheContestTree.set(contestId, rootNode);
+        if (catcheContestTree.size > 5) {
+            // Delete oldest cache
+            const firstKey = catcheContestTree.keys().next().value;
+            if (firstKey !== undefined) catcheContestTree.delete(firstKey);
         }
-
+        return rootNode;
     }
+    return null;
 }

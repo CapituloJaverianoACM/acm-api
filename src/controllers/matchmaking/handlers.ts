@@ -49,8 +49,8 @@ export const createMatchmaking = async (context: Context) => {
 };
 
 export const getMatchmakingTree = async (context: Context) => {
-    const {contest_id} = context.params;
+    const { contest_id } = context.params;
     const tree = await getTreeByContestId(parseInt(contest_id));
-    if(!tree) return BadRequest(context, "Empty tree for contest");
-    return Ok(context,tree);
+    if (!tree) return BadRequest(context, "Empty tree for contest");
+    return Ok(context, tree);
 };
