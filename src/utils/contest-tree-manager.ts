@@ -29,3 +29,14 @@ export async function getTreeByContestId(contestId: number) {
     }
     return null;
 }
+
+export async function deleteTreeById(contestId: number) {
+    // Eliminar del cache
+    if (catcheContestTree.has(contestId)) {
+        catcheContestTree.delete(contestId);
+    }
+    
+    // Eliminar de la base de datos
+    const result = await db.delete(COLLECTION, { contest_id: contestId });
+    return result;
+}

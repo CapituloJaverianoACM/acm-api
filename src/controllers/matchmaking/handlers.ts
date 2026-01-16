@@ -4,7 +4,7 @@ import { MongoAdapter } from "../../db/mongo/mongo.adapter";
 import { SupabaseAdapter } from "../../db/supabase/supabase.adapter";
 import { BadRequest, Ok, ServerError } from "../../utils/responses";
 import { makeMatches, MatchmakingTreeNode, shuffle_array } from "../../utils/matchmaking-tree";
-import { getTreeByContestId } from "../../utils/contest-tree-manager";
+import { getTreeByContestId, deleteTreeById } from "../../utils/contest-tree-manager";
 
 const COLLECTION: string = "matchmaking";
 const PARTICIPATION_COLLECTION: string = "participation";
@@ -55,4 +55,12 @@ export const getMatchmakingTree = async (context: Context) => {
     const tree = await getTreeByContestId(parseInt(contest_id));
     if (!tree) return BadRequest(context, "Empty tree for contest");
     return Ok(context, tree);
+};
+
+export const deleteMatchmakingTree = async (context: Context) => {
+    const { contest_id } = context.params;
+    const result = await deleteTreeById(parseInt(contest_id));
+    
+    if (result.error) return BadRequest(context, result.error);
+    return Ok(context, { message: "Matchmaking tree deleted successfully" });
 };
