@@ -11,6 +11,7 @@ import { pictures } from "./controllers/picture/controller";
 import { results } from "./controllers/results/controller";
 import { students } from "./controllers/student/controller";
 import { participation } from "./controllers/participation/controller";
+import { matchmaking } from "./controllers/matchmaking/controller";
 
 export const app = new Elysia()
   .use(
@@ -18,7 +19,7 @@ export const app = new Elysia()
       origin: [process.env.FRONTEND_URL_DEV!, process.env.FRONTEND_URL!],
       credentials: true,
       methods: ["GET", "POST", "PUT", "DELETE"],
-      allowedHeaders: ["Content-Type", "Authorization"],
+      allowedHeaders: ["Content-Type", "Authorization", "acm-auth-signed-supabase"],
     }),
   )
   .use(swagger())
@@ -31,6 +32,7 @@ export const app = new Elysia()
   .use(students)
   .use(pictures)
   .use(participation)
+  .use(matchmaking)
   .get("/ping", () => "Pong! From Xaverian ACM Chapter")
   .listen(Number(process.env.PORT));
 
