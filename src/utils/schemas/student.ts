@@ -17,6 +17,7 @@ export const UpdateStudentSchema = t.Object({
   victory_count: t.Optional(t.Number()),
   level: t.Optional(t.Enum(LevelEnum)),
   avatar: t.Optional(t.String()),
+  codeforces_handle: t.Optional(t.String())
 });
 
 export const BulkIdQuery = t.Object({

@@ -31,8 +31,11 @@ export const verifyJWT = async (context: Context) => {
 
     if (type !== "Bearer") return Unauthorized(context, "Malformed Bearer token");
     let decoded = null;
+
+
     /*/ acm-auth-signed-supabase */
-    if (context.request.headers.get("acm-auth-signed-supabase")) {
+    if (context.request.headers.get(process.env.SUPABASE_TOKEN_HEADER_NAME!) != null) {
+        console.log("Supabase token recieved");
         decoded = await SupabaseDB.getInstance().verifySignedJWT(token)
         if (decoded != null) {
             decoded = { email: decoded.email! };
