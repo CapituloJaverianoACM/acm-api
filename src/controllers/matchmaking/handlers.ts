@@ -4,6 +4,7 @@ import { MongoAdapter } from "../../db/mongo/mongo.adapter";
 import { SupabaseAdapter } from "../../db/supabase/supabase.adapter";
 import { BadRequest, Ok, ServerError } from "../../utils/responses";
 import { makeMatches, MatchmakingTreeNode } from "../../utils/matchmaking-tree";
+import { getTreeByContestId } from "../../utils/contest-tree-manager";
 
 const COLLECTION: string = "matchmaking";
 const PARTICIPATION_COLLECTION: string = "participation";
@@ -45,4 +46,14 @@ export const createMatchmaking = async (context: Context) => {
 
     if (result.error) return BadRequest(context, result.error);
     return Ok(context, result.data);
+};
+
+export const getMatchmakingByContestId = async (context: Context) => {
+    const contestId = Number(context.params.contestId);
+    const tree = await getTreeByContestId(contestId);
+    if (!tree) {
+        return BadRequest(context, "Matchmaking tree not found for this contest");
+    }
+
+    return tree; 
 };
