@@ -103,15 +103,15 @@ export const getEntityFilters = (
     filters,
     order: ordercol
       ? {
-        column: ordercol,
-        asc,
-      }
+          column: ordercol,
+          asc,
+        }
       : undefined,
     suborder: subordercol
       ? {
-        column: subordercol,
-        asc: subasc,
-      }
+          column: subordercol,
+          asc: subasc,
+        }
       : undefined,
     limit,
     offset,
