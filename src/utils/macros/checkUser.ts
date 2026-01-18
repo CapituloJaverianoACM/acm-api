@@ -1,11 +1,13 @@
 import Elysia, { Context } from "elysia";
 import { BadRequest, Unauthorized } from "../responses";
 
+const ADMIN_ROLES = {"admin" : true, "super-admin" : true};
+
 export const checkUsersMacro = new Elysia().macro({
     isSelf(locations: string[]) {
         return {
             beforeHandle(context: Context) {
-                if ((context.store as any).user.role in ["admin", "super-admin"]) return;
+                if ((context.store as any).user.role in ADMIN_ROLES) return;
 
                 for (const location of locations) {
                     const keys = location.split(".");
@@ -35,7 +37,7 @@ export const checkUsersMacro = new Elysia().macro({
         return {
             beforeHandle(context: Context) {
                 if (!check) return;
-                if (!((context.store as any).user.role in ["admin", "super-admin"]))
+                if (!((context.store as any).user.role in ADMIN_ROLES))
                     return Unauthorized(context, "You must be an admin.");
             },
         };
