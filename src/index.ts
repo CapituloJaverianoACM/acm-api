@@ -2,7 +2,6 @@ import "dotenv/config";
 import { Elysia } from "elysia";
 import { swagger } from "@elysiajs/swagger";
 import cors from "@elysiajs/cors";
-import { user } from "./controllers/user/controller";
 import { auth } from "./controllers/auth/controller";
 import { activity } from "./controllers/activity/controller";
 import { members } from "./controllers/members/controller";
@@ -12,6 +11,8 @@ import { results } from "./controllers/results/controller";
 import { students } from "./controllers/student/controller";
 import { participation } from "./controllers/participation/controller";
 import { matchmaking } from "./controllers/matchmaking/controller";
+import { helmet } from "elysia-helmet";
+import { admins } from "./controllers/admins/controller";
 
 export const app = new Elysia()
   .use(
@@ -19,13 +20,18 @@ export const app = new Elysia()
       origin: [process.env.FRONTEND_URL_DEV!, process.env.FRONTEND_URL!],
       credentials: true,
       methods: ["GET", "POST", "PUT", "DELETE"],
-      allowedHeaders: ["Content-Type", "Authorization", "acm-auth-signed-supabase"],
+      allowedHeaders: [
+        "Content-Type",
+        "Authorization",
+        "acm-auth-signed-supabase",
+      ],
     }),
   )
+  .use(helmet())
   .use(swagger())
   .use(auth)
   .use(activity)
-  .use(user)
+  .use(admins)
   .use(members)
   .use(contests)
   .use(results)
