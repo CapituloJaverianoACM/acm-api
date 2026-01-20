@@ -1,5 +1,6 @@
 import { Db, MongoClient, ServerApiVersion } from "mongodb";
-const URI = process.env.MONGO_URI || "";
+import { MONGO_URL } from "../../config/env";
+const URI = MONGO_URL || "";
 
 export default class MongoDB {
   private client: MongoClient;
