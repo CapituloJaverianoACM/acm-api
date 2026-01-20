@@ -1,6 +1,7 @@
 import { createClient, SupabaseClient } from "@supabase/supabase-js";
 import { IAuthProvider, RoleEnum } from "../auth.provider.interface";
 import { StandardResponse } from "../../utils/responses";
+import { SUPABASE_SERVICE_KEY, SUPABASE_URL } from "../../config/env";
 
 export class SupabaseAuthProvider implements IAuthProvider {
     private client: SupabaseClient;
@@ -9,8 +10,8 @@ export class SupabaseAuthProvider implements IAuthProvider {
 
     private constructor() {
         this.client = createClient(
-            process.env.SUPABASE_URL!,
-            process.env.SUPABASE_SERVICE_KEY!,
+            SUPABASE_URL!,
+            SUPABASE_SERVICE_KEY!,
         );
     }
     async login(
