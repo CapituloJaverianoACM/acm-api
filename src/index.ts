@@ -17,7 +17,7 @@ import { admins } from "./controllers/admins/controller";
 export const app = new Elysia()
   .use(
     cors({
-      origin: [process.env.FRONTEND_URL_DEV!, process.env.FRONTEND_URL!],
+      origin: [process.env.FRONTEND_URL_DEV!, process.env.FRONTEND_URL_PROD!],
       credentials: true,
       methods: ["GET", "POST", "PUT", "DELETE"],
       allowedHeaders: [
