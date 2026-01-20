@@ -1,6 +1,7 @@
 import { Db, MongoClient, ServerApiVersion } from "mongodb";
-import { MONGO_URL } from "../../config/env";
-const URI = MONGO_URL || "";
+import { MONGO_DB } from "../../config/env";
+
+const URI = process.env.MONGO_URI || "";
 
 export default class MongoDB {
   private client: MongoClient;
@@ -23,7 +24,7 @@ export default class MongoDB {
 
   private async connectDB(): Promise<Db> {
     await this.client.connect();
-    return this.client.db("acm-api");
+    return this.client.db(MONGO_DB);
   }
 
   private assembleResponse(ack: boolean, data: any) {

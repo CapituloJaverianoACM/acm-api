@@ -2,9 +2,9 @@ const APP_ENV = process.env.APP_ENV ?? "development";
 
 const isProd = APP_ENV === "production";
 
-export const MONGO_URL = isProd
-  ? process.env.MONGO_URI_PROD!
-  : process.env.MONGO_URI_DEV!;
+export const MONGO_DB = isProd
+  ? "acm-api-prod"
+  : "acm-api";
 
 export const SUPABASE_URL = isProd
   ? process.env.SUPABASE_URL_PROD!
