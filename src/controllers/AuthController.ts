@@ -1,7 +1,7 @@
 import Elysia, { t } from "elysia";
-import { AuthService } from "../../services/AuthService";
-import { SupabaseAuthProvider } from "../../auth/supabase/supabase.auth.adapter";
-import { BadRequest, Ok } from "../../utils/responses";
+import { AuthService } from "../services/AuthService";
+import { SupabaseAuthProvider } from "../auth/supabase/supabase.auth.adapter";
+import { BadRequest, Ok } from "../utils/responses";
 
 const authService = new AuthService(SupabaseAuthProvider.getInstance());
 

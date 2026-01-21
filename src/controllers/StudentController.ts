@@ -1,47 +1,43 @@
 import Elysia from "elysia";
 import {
-    CreateContestSchema,
-    UpdateContestSchema,
-} from "../../utils/schemas/contest";
-import { BulkIdQuery } from "../../utils/schemas/student";
-import { ContestService } from "../../services/ContestService";
-import { SupabaseAdapter } from "../../db/supabase/supabase.adapter";
-import { ENTITY_FILTER_SCHEMAS, getEntityFilters } from "../../utils/filters";
-import { BadRequest, Created, Ok } from "../../utils/responses";
-import { jwtPlugin } from "../../utils/macros/auth";
+    CreateStudentSchema,
+    UpdateStudentSchema,
+    BulkIdQuery,
+} from "../utils/schemas/student";
+import { StudentService } from "../services/StudentService";
+import { SupabaseAdapter } from "../db/supabase/supabase.adapter";
+import { ENTITY_FILTER_SCHEMAS, getEntityFilters } from "../utils/filters";
+import { BadRequest, Created, Ok } from "../utils/responses";
+import { jwtPlugin } from "../utils/macros/auth";
 
-const contestService = new ContestService(new SupabaseAdapter());
+const studentService = new StudentService(new SupabaseAdapter());
 
-export const contests = new Elysia({ prefix: "/contests" })
+export const students = new Elysia({ prefix: "/students" })
     .get("/", async (context) => {
-        const wPicture =
-            new URL(context.request.url).searchParams.get("picture") == "1";
-
         const { filters, order, suborder, limit, offset } = getEntityFilters(
             context,
-            "contest" as keyof typeof ENTITY_FILTER_SCHEMAS,
+            "student" as keyof typeof ENTITY_FILTER_SCHEMAS,
         );
 
-        const result = await contestService.getAll(
+        const result = await studentService.getAll(
             filters,
             order,
             suborder,
             limit,
             offset,
-            wPicture,
         );
 
         if (result.error) return BadRequest(context, result.error);
         return Ok(context, result.data);
     })
     .get("/:id", async (context) => {
-        const wPicture =
-            new URL(context.request.url).searchParams.get("picture") == "1";
+        const result = await studentService.getOne(parseInt(context.params.id));
 
-        const result = await contestService.getOne(
-            parseInt(context.params.id),
-            wPicture,
-        );
+        if (result.error) return BadRequest(context, result.error);
+        return Ok(context, result.data);
+    })
+    .get("/supabase/:id", async (context) => {
+        const result = await studentService.getBySupabaseId(context.params.id);
 
         if (result.error) return BadRequest(context, result.error);
         return Ok(context, result.data);
@@ -49,7 +45,7 @@ export const contests = new Elysia({ prefix: "/contests" })
     .post(
         "/bulk-query/id",
         async (context) => {
-            const result = await contestService.getBulkById(context.body.ids);
+            const result = await studentService.getBulkById(context.body.ids);
 
             if (result.error) return BadRequest(context, result.error);
             return Ok(context, result.data);
@@ -58,25 +54,24 @@ export const contests = new Elysia({ prefix: "/contests" })
             body: BulkIdQuery,
         },
     )
-    // -------------------- AUTHENTICATED ------------------------------
     .use(jwtPlugin)
     .post(
         "/create",
         async (context) => {
-            const result = await contestService.create(context.body);
+            const result = await studentService.create(context.body);
 
             if (result.error) return BadRequest(context, result.error);
             return Created(context, result.data);
         },
         {
-            body: CreateContestSchema,
+            body: CreateStudentSchema,
             isAdmin: true,
         },
     )
     .put(
         "/:id",
         async (context) => {
-            const result = await contestService.update(
+            const result = await studentService.update(
                 parseInt(context.params.id),
                 context.body,
             );
@@ -85,14 +80,14 @@ export const contests = new Elysia({ prefix: "/contests" })
             return Ok(context, result.data);
         },
         {
-            body: UpdateContestSchema,
-            isAdmin: true,
+            body: UpdateStudentSchema,
+            isSelf: ["params.id"],
         },
     )
     .delete(
         "/:id",
         async (context) => {
-            const result = await contestService.delete(parseInt(context.params.id));
+            const result = await studentService.delete(parseInt(context.params.id));
 
             if (result.error) return BadRequest(context, result.error);
             return Ok(context, result.data);
