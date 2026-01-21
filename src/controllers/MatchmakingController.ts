@@ -2,13 +2,13 @@ import Elysia, { t } from "elysia";
 import {
     ContestIdParamSchema,
     CreateMatchmakingSchema,
-} from "../../utils/schemas/matchmaking";
-import { MatchmakingService } from "../../services/MatchmakingService";
-import { MongoAdapter } from "../../db/mongo/mongo.adapter";
-import { SupabaseAdapter } from "../../db/supabase/supabase.adapter";
-import { BadRequest, Ok } from "../../utils/responses";
-import { jwtPlugin } from "../../utils/macros/auth";
-import { NumericString } from "../../utils/schemas/lib";
+} from "../utils/schemas/matchmaking";
+import { MatchmakingService } from "../services/MatchmakingService";
+import { MongoAdapter } from "../db/mongo/mongo.adapter";
+import { SupabaseAdapter } from "../db/supabase/supabase.adapter";
+import { BadRequest, Ok } from "../utils/responses";
+import { jwtPlugin } from "../utils/macros/auth";
+import { NumericString } from "../utils/schemas/lib";
 
 const matchmakingService = new MatchmakingService(
     new MongoAdapter(),

@@ -2,12 +2,12 @@ import Elysia from "elysia";
 import {
     CreatePictureSchema,
     UpdatePictureSchema,
-} from "../../utils/schemas/picture";
-import { PictureService } from "../../services/PictureService";
-import { SupabaseAdapter } from "../../db/supabase/supabase.adapter";
-import { ENTITY_FILTER_SCHEMAS, getEntityFilters } from "../../utils/filters";
-import { BadRequest, Created, Ok } from "../../utils/responses";
-import { jwtPlugin } from "../../utils/macros/auth";
+} from "../utils/schemas/picture";
+import { PictureService } from "../services/PictureService";
+import { SupabaseAdapter } from "../db/supabase/supabase.adapter";
+import { ENTITY_FILTER_SCHEMAS, getEntityFilters } from "../utils/filters";
+import { BadRequest, Created, Ok } from "../utils/responses";
+import { jwtPlugin } from "../utils/macros/auth";
 
 const pictureService = new PictureService(new SupabaseAdapter());
 

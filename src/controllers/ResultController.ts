@@ -2,13 +2,13 @@ import Elysia from "elysia";
 import {
     CreateResultSchema,
     UpdateResultSchema,
-} from "../../utils/schemas/result";
-import { IdSupabaseInt4 } from "../../utils/schemas/lib";
-import { ResultService } from "../../services/ResultService";
-import { SupabaseAdapter } from "../../db/supabase/supabase.adapter";
-import { ENTITY_FILTER_SCHEMAS, getEntityFilters } from "../../utils/filters";
-import { BadRequest, Created, Ok } from "../../utils/responses";
-import { jwtPlugin } from "../../utils/macros/auth";
+} from "../utils/schemas/result";
+import { IdSupabaseInt4 } from "../utils/schemas/lib";
+import { ResultService } from "../services/ResultService";
+import { SupabaseAdapter } from "../db/supabase/supabase.adapter";
+import { ENTITY_FILTER_SCHEMAS, getEntityFilters } from "../utils/filters";
+import { BadRequest, Created, Ok } from "../utils/responses";
+import { jwtPlugin } from "../utils/macros/auth";
 
 const resultService = new ResultService(new SupabaseAdapter());
 

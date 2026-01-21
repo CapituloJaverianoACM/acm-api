@@ -2,13 +2,13 @@ import Elysia, { t } from "elysia";
 import {
     CreateParticipationSchema,
     UpdateParticipationSchema,
-} from "../../utils/schemas/participation";
-import { NumericString } from "../../utils/schemas/lib";
-import { ParticipationService } from "../../services/ParticipationService";
-import { SupabaseAdapter } from "../../db/supabase/supabase.adapter";
-import { ENTITY_FILTER_SCHEMAS, getEntityFilters } from "../../utils/filters";
-import { BadRequest, Created, Ok } from "../../utils/responses";
-import { jwtPlugin } from "../../utils/macros/auth";
+} from "../utils/schemas/participation";
+import { NumericString } from "../utils/schemas/lib";
+import { ParticipationService } from "../services/ParticipationService";
+import { SupabaseAdapter } from "../db/supabase/supabase.adapter";
+import { ENTITY_FILTER_SCHEMAS, getEntityFilters } from "../utils/filters";
+import { BadRequest, Created, Ok } from "../utils/responses";
+import { jwtPlugin } from "../utils/macros/auth";
 
 const participationService = new ParticipationService(new SupabaseAdapter());
 
