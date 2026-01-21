@@ -1,5 +1,6 @@
 import { t } from "elysia";
 import { LevelEnum } from "./contest";
+import { RoleEnum } from "../../auth/auth.provider.interface";
 
 export const CreateStudentSchema = t.Object({
   name: t.String(),
@@ -18,6 +19,7 @@ export const UpdateStudentSchema = t.Object({
   level: t.Optional(t.Enum(LevelEnum)),
   avatar: t.Optional(t.String()),
   codeforces_handle: t.Optional(t.String()),
+  role: t.Optional(t.Enum(RoleEnum)),
 });
 
 export const BulkIdQuery = t.Object({
