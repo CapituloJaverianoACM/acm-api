@@ -18,6 +18,10 @@ export type MatchmakingTreeNode = {
     right: null | MatchmakingTreeNode;
 };
 
+function getChildIds(node: MatchmakingTreeNode): [number | null, number | null] {
+    return [node.left?.student_id ?? null, node.right?.student_id ?? null];
+}
+
 const midpoint = (l: number, r: number) => l + Math.trunc((r - l) / 2);
 
 // [l, r) for index range
@@ -64,4 +68,53 @@ export function getOpponentInTree(
 
         return null;
     }
+}
+
+/**
+ * Intenta registrar el ganador de un match en el primer nodo "disponible"
+ * cuya pareja de hijos sea exactamente [local_id, visitant_id] (en cualquier orden).
+ *
+ * Reglas (según pseudocódigo):
+ * - Si el nodo ya tiene student_id (ya está resuelto), no se puede escribir.
+ * - Si los hijos coinciden con [local, visitant], setear ganador y terminar.
+ * - Si alguno de [local, visitant] aparece en los hijos pero no ambos, invalidar.
+ * - Si los dos hijos ya están completos (sin nulls) pero no coinciden, invalidar.
+ * - En caso contrario, seguir buscando recursivamente.
+ */
+export function createResultInTree(
+    root: MatchmakingTreeNode | null,
+    local_id: number,
+    visitant_id: number,
+    winner_id: number,
+): boolean {
+    if (!root) return false;
+
+    if (root.student_id !== null) return false;
+
+    const [leftId, rightId] = getChildIds(root);
+    const childVals: [number | null, number | null] = [leftId, rightId];
+
+    const matchesPair =
+        (childVals[0] === local_id && childVals[1] === visitant_id) ||
+        (childVals[0] === visitant_id && childVals[1] === local_id);
+
+    if (matchesPair) {
+        root.student_id = winner_id;
+        return true;
+    }
+
+    const eitherInChildVals =
+        childVals[0] === local_id ||
+        childVals[1] === local_id ||
+        childVals[0] === visitant_id ||
+        childVals[1] === visitant_id;
+
+    const childValsHaveNoNulls = childVals[0] !== null && childVals[1] !== null;
+
+    if (eitherInChildVals || childValsHaveNoNulls) return false;
+
+    return (
+        createResultInTree(root.left, local_id, visitant_id, winner_id) ||
+        createResultInTree(root.right, local_id, visitant_id, winner_id)
+    );
 }

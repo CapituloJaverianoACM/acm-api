@@ -1,6 +1,7 @@
 import { IDatabase } from "../db/database.interface";
 import {
     getOpponentInTree,
+    createResultInTree,
     makeMatches,
     MatchmakingTreeNode,
     shuffle_array,
@@ -8,13 +9,16 @@ import {
 import {
     getTreeByContestId,
     deleteTreeById,
+    updateTreeByContestId,
 } from "../utils/contest-tree-manager";
 import { Student } from "../utils/schemas/student";
 import { StudentService } from "./StudentService";
 import { SupabaseAdapter } from "../db/supabase/supabase.adapter";
+import { Result } from "../utils/schemas/result";
 
 const COLLECTION: string = "matchmaking";
 const PARTICIPATION_COLLECTION: string = "participation";
+const RESULT_COLLECTION: string = "results";
 
 const student_service = new StudentService(new SupabaseAdapter());
 
@@ -111,5 +115,71 @@ export class MatchmakingService {
     ): Promise<{ error: string | null; data: any }> {
         const result = await deleteTreeById(contestId);
         return result;
+    }
+
+    /**
+     * Transacción con compensación (rollback):
+     * - Mutar árbol en memoria con createResultInTree
+     * - Insertar result en Supabase
+     * - Persistir árbol en Mongo
+     *
+     * Rollbacks:
+     * - Si falla insert en Supabase: restaurar árbol/caché a estado previo.
+     * - Si falla update en Mongo: borrar result insertado en Supabase y restaurar árbol/caché.
+     */
+    async setResult(resultData: {
+        contest_id: number;
+        local_id: number;
+        visitant_id: number;
+        winner_id: number;
+    }): Promise<{ error: string | null; data: any }> {
+        const { contest_id, local_id, visitant_id, winner_id } = resultData;
+
+        if (local_id === visitant_id) {
+            return { error: "Visitant and Local are the same.", data: null };
+        }
+
+        if (winner_id !== local_id && winner_id !== visitant_id) {
+            return { error: "Neither visitant or local is the winner", data: null };
+        }
+
+        const tree = await getTreeByContestId(contest_id);
+        if (!tree) {
+            return { error: "Empty tree for contest", data: null };
+        }
+
+        // snapshot para rollback (estructura simple => JSON ok)
+        const prevTree: MatchmakingTreeNode = Object.create(tree);
+
+        const ok = createResultInTree(tree, local_id, visitant_id, winner_id);
+        if (!ok) {
+            return { error: "Invalid match or node already resolved", data: null };
+        }
+
+        // 1) crear result en supabase
+        const created = await this.supabaseDb.insert(RESULT_COLLECTION, resultData);
+        if (created.error) {
+            // rollback árbol en cache a estado previo
+            await updateTreeByContestId(contest_id, prevTree);
+            return { error: created.error, data: null };
+        }
+
+        const insertedRow = created.data[0] as Result;
+        const insertedId = insertedRow.id;
+
+        // 2) persistir árbol en mongo (y cache)
+        const updatedTree = await updateTreeByContestId(contest_id, tree);
+        if (updatedTree.error) {
+            // rollback supabase result
+            if (insertedId !== null && insertedId !== undefined) {
+                await this.supabaseDb.delete(RESULT_COLLECTION, { id: insertedId });
+            }
+            // rollback árbol/caché
+            await updateTreeByContestId(contest_id, prevTree);
+
+            return { error: updatedTree.error, data: null };
+        }
+
+        return { error: null, data: insertedRow ?? created.data };
     }
 }

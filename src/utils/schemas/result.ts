@@ -1,4 +1,4 @@
-import { t } from "elysia";
+import { Static, t } from "elysia";
 
 export const CreateResultSchema = t.Object({
   contest_id: t.Number(),
@@ -13,3 +13,5 @@ export const UpdateResultSchema = t.Object({
   local_id: t.Optional(t.Number()),
   visitant_id: t.Optional(t.Number()),
 });
+
+export type Result = Static<typeof CreateResultSchema> & { id: number };
