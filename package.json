@@ -20,7 +20,8 @@
     "elysia": "^1.4.22",
     "elysia-helmet": "^3.0.0",
     "jsonwebtoken": "^9.0.2",
-    "mongodb": "^6.12.0"
+    "mongodb": "^6.12.0",
+    "ws": "^8.19.0"
   },
   "devDependencies": {
     "bun-types": "latest"

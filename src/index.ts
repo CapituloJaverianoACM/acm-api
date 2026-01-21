@@ -13,6 +13,7 @@ import { participation } from "./controllers/participation/controller";
 import { matchmaking } from "./controllers/matchmaking/controller";
 import { helmet } from "elysia-helmet";
 import { admins } from "./controllers/admins/controller";
+import { match } from "./controllers/match/controller";
 
 export const app = new Elysia()
   .use(
@@ -39,9 +40,13 @@ export const app = new Elysia()
   .use(pictures)
   .use(participation)
   .use(matchmaking)
+  .use(match)
   .get("/ping", () => "Pong! From Xaverian ACM Chapter")
   .listen(Number(process.env.PORT));
 
 console.log(
   `🦊 Elysia is running at ${app.server?.hostname}:${app.server?.port}`,
+);
+console.log(
+  `🔌 WebSocket available at ws://${app.server?.hostname}:${app.server?.port}/ws/contest/:contestId`,
 );

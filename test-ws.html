@@ -1,0 +1,232 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>WebSocket Test - 2 IDs</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body { 
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      min-height: 100vh;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      padding: 20px;
+    }
+    .container {
+      background: white;
+      border-radius: 10px;
+      box-shadow: 0 10px 40px rgba(0,0,0,0.2);
+      padding: 30px;
+      max-width: 600px;
+      width: 100%;
+    }
+    h1 { color: #333; margin-bottom: 20px; text-align: center; }
+    .form-group { margin-bottom: 15px; }
+    label { display: block; margin-bottom: 5px; font-weight: 600; color: #555; }
+    input, button { 
+      padding: 10px 15px;
+      border: 1px solid #ddd;
+      border-radius: 5px;
+      font-size: 14px;
+    }
+    input { width: 100%; }
+    button {
+      background: #667eea;
+      color: white;
+      border: none;
+      cursor: pointer;
+      font-weight: 600;
+      transition: background 0.3s;
+      width: 100%;
+      margin-top: 10px;
+    }
+    button:hover { background: #764ba2; }
+    button:disabled { background: #ccc; cursor: not-allowed; }
+    .status {
+      padding: 10px;
+      margin: 20px 0;
+      border-radius: 5px;
+      text-align: center;
+      font-weight: 600;
+    }
+    .status.connected { background: #d4edda; color: #155724; }
+    .status.disconnected { background: #f8d7da; color: #721c24; }
+    .status.connecting { background: #fff3cd; color: #856404; }
+    .logs {
+      background: #f5f5f5;
+      border: 1px solid #ddd;
+      border-radius: 5px;
+      padding: 15px;
+      height: 300px;
+      overflow-y: auto;
+      margin-top: 20px;
+      font-family: 'Courier New', monospace;
+      font-size: 12px;
+    }
+    .log-line { 
+      margin-bottom: 8px; 
+      padding: 5px; 
+      border-left: 3px solid #667eea; 
+      padding-left: 10px; 
+    }
+    .log-line.info { border-left-color: #17a2b8; }
+    .log-line.success { border-left-color: #28a745; }
+    .log-line.error { border-left-color: #dc3545; }
+    .log-line.warning { border-left-color: #ffc107; }
+    .message-input {
+      display: flex;
+      gap: 10px;
+      margin-top: 20px;
+    }
+    .message-input input { flex: 1; }
+    .message-input button { width: auto; padding: 10px 20px; margin: 0; }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h1>🔌 WebSocket Test - 2 IDs</h1>
+    
+    <div class="form-group">
+      <label>Own ID (Tu ID):</label>
+      <input type="text" id="ownId" value="player1" placeholder="Ej: player1">
+    </div>
+
+    <div class="form-group">
+      <label>Opponent ID (ID del oponente):</label>
+      <input type="text" id="opponentId" value="player2" placeholder="Ej: player2">
+    </div>
+
+    <div class="form-group">
+      <button onclick="connect()">Conectar</button>
+      <button onclick="disconnect()" style="background: #dc3545;">Desconectar</button>
+    </div>
+
+    <div id="status" class="status disconnected">🔴 Desconectado</div>
+
+    <div class="message-input">
+      <input type="text" id="message" placeholder='{"action": "SEND_SCORE", "data": {"score": 100}}' value='{"action": "SEND_SCORE", "data": {"score": 100}}'>
+      <button onclick="sendMessage()" id="sendBtn" disabled>Enviar</button>
+    </div>
+
+    <div id="logs" class="logs">
+      <div class="log-line info">📋 Listo para conectar...</div>
+    </div>
+
+    <button onclick="clearLogs()" style="margin-top: 10px; background: #6c757d;">Limpiar Logs</button>
+  </div>
+
+  <script>
+    let ws = null;
+    const ownIdInput = document.getElementById('ownId');
+    const opponentIdInput = document.getElementById('opponentId');
+    const statusDiv = document.getElementById('status');
+    const logsDiv = document.getElementById('logs');
+    const messageInput = document.getElementById('message');
+    const sendBtn = document.getElementById('sendBtn');
+    const PORT = 3001;
+
+    function log(message, type = 'info') {
+      const line = document.createElement('div');
+      line.className = `log-line ${type}`;
+      const time = new Date().toLocaleTimeString();
+      const icons = { info: 'ℹ️', success: '✅', error: '❌', warning: '⚠️' };
+      line.textContent = `[${time}] ${icons[type]} ${message}`;
+      logsDiv.appendChild(line);
+      logsDiv.scrollTop = logsDiv.scrollHeight;
+      console.log(`[${type.toUpperCase()}] ${message}`);
+    }
+
+    function updateStatus(connected, message) {
+      statusDiv.className = 'status ' + (connected ? 'connected' : 'disconnected');
+      statusDiv.textContent = (connected ? '🟢' : '🔴') + ' ' + message;
+      sendBtn.disabled = !connected;
+    }
+
+    function connect() {
+      const ownId = ownIdInput.value.trim();
+      const opponentId = opponentIdInput.value.trim();
+
+      if (!ownId || !opponentId) {
+        log('Ambos IDs son requeridos', 'error');
+        return;
+      }
+
+      updateStatus(false, 'Conectando...');
+      statusDiv.className = 'status connecting';
+
+      const url = `ws://localhost:${PORT}/ws/contest/${ownId}/${opponentId}`;
+      log(`Conectando a ${url}`, 'warning');
+
+      ws = new WebSocket(url);
+
+      ws.onopen = () => {
+        updateStatus(true, '✅ Conectado');
+        log(`Conectado - Own: ${ownId}, Opponent: ${opponentId}`, 'success');
+      };
+
+      ws.onmessage = (event) => {
+        const data = JSON.parse(event.data);
+        log(`📨 Mensaje: ${JSON.stringify(data).substring(0, 80)}...`, 'success');
+        console.log('Full message:', data);
+      };
+
+      ws.onerror = (error) => {
+        updateStatus(false, '❌ Error');
+        log('Error de conexión', 'error');
+      };
+
+      ws.onclose = () => {
+        updateStatus(false, 'Desconectado');
+        log('Conexión cerrada', 'warning');
+      };
+    }
+
+    function disconnect() {
+      if (ws) {
+        ws.close();
+        ws = null;
+        updateStatus(false, 'Desconectado');
+        log('Desconectado manualmente', 'warning');
+      }
+    }
+
+    function sendMessage() {
+      if (!ws || ws.readyState !== WebSocket.OPEN) {
+        log('No hay conexión activa', 'error');
+        return;
+      }
+
+      const message = messageInput.value.trim();
+      
+      if (!message) {
+        log('El mensaje no puede estar vacío', 'error');
+        return;
+      }
+
+      try {
+        const data = JSON.parse(message);
+        ws.send(JSON.stringify(data));
+        log(`📤 Enviado: ${JSON.stringify(data)}`, 'info');
+      } catch (error) {
+        log(`❌ JSON inválido: ${error.message}`, 'error');
+      }
+    }
+
+    function clearLogs() {
+      logsDiv.innerHTML = '<div class="log-line info">Logs limpiados</div>';
+    }
+
+    messageInput.addEventListener('keypress', (e) => {
+      if (e.key === 'Enter') sendMessage();
+    });
+
+    window.addEventListener('load', () => {
+      log('Cliente WebSocket listo', 'info');
+      log('URL: ws://localhost:3001/ws/contest/:ownID/:opponentID', 'info');
+    });
+  </script>
+</body>
+</html>
