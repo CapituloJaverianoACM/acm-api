@@ -40,3 +40,23 @@ export async function deleteTreeById(contestId: number) {
   const result = await db.delete(COLLECTION, { contest_id: contestId });
   return result;
 }
+
+export async function updateTreeByContestId(
+  contestId: number,
+  tree: MatchmakingTreeNode,
+) {
+  if (!catcheContestTree.has(contestId)) {
+    return { error: "Tree not found in cache", data: null };
+  }
+  // Re-insertar para moverla al final (más recientemente usada)
+  catcheContestTree.delete(contestId);
+  catcheContestTree.set(contestId, tree);
+
+  const result = await db.update(
+    COLLECTION,
+    { contest_id: contestId },
+    { tree },
+  );
+
+  return result;
+}

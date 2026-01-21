@@ -1,9 +1,13 @@
 import { IDatabase } from "../db/database.interface";
+import { MatchmakingService } from "./MatchmakingService";
 
 const COLLECTION: string = "results";
 
 export class ResultService {
-  constructor(private db: IDatabase) {}
+  constructor(
+    private db: IDatabase,
+    private matchmakingService?: MatchmakingService,
+  ) { }
 
   async getAll(
     filters: any,
@@ -15,13 +19,13 @@ export class ResultService {
     const result =
       Object.keys(filters).length > 0
         ? await this.db.getBy(
-            COLLECTION,
-            filters,
-            order,
-            suborder,
-            limit,
-            offset,
-          )
+          COLLECTION,
+          filters,
+          order,
+          suborder,
+          limit,
+          offset,
+        )
         : await this.db.getAll(COLLECTION, order, suborder, limit, offset);
 
     return result;
@@ -40,18 +44,12 @@ export class ResultService {
   }
 
   async create(resultData: any): Promise<{ error: string | null; data: any }> {
-    const { local_id, visitant_id, winner_id } = resultData;
-
-    if (local_id == visitant_id) {
-      return { error: "Visitant and Local are the same.", data: null };
+    if (this.matchmakingService) {
+      // Delegar al flujo transaccional (supabase + mongo)
+      return this.matchmakingService.setResult(resultData);
     }
 
-    if (winner_id != local_id && winner_id != visitant_id) {
-      return { error: "Neither visitant or local is the winner", data: null };
-    }
-
-    const result = await this.db.insert(COLLECTION, resultData);
-    return result;
+    return { error: "Matchmaking service not available", data: null };
   }
 
   async update(
