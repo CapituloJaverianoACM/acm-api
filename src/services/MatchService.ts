@@ -31,6 +31,7 @@ export class MatchService {
   private matchPairs = new Map<string, Set<string>>();
   private readyStates = new Map<string, { menor: boolean; mayor: boolean }>();
   private usedProblems = new Set<string>();
+  private assignedProblems = new Map<string, SolvedProblem | null>();
 
   // Cache for all CF problems
   private allCFProblems: CFProblem[] = [];
@@ -107,6 +108,11 @@ export class MatchService {
     if (this.readyStates.has(pairKey)) {
       this.readyStates.delete(pairKey);
     }
+
+    // Clean up assigned problem when all connections are closed
+    if (!this.matchPairs.has(pairKey)) {
+      this.assignedProblems.delete(pairKey);
+    }
   }
 
   async handleReadyAction(
@@ -133,6 +139,10 @@ export class MatchService {
         problems.own,
         problems.opponent,
       );
+      
+      // Store the assigned problem for this pairKey
+      this.assignedProblems.set(pairKey, selected);
+      
       return {
         action: "START_CONTEST",
         pairKey,
@@ -242,6 +252,183 @@ export class MatchService {
     const result = await promise;
     this.cfPending.delete(handle);
     return result;
+  }
+
+  private async fetchLatestAcceptedProblem(
+    handle: string | null,
+  ): Promise<{ problem: SolvedProblem; submissionTime: number } | null> {
+    if (!handle) return null;
+    const resp = await fetch(
+      `https://codeforces.com/api/user.status?handle=${encodeURIComponent(handle)}`,
+    );
+    const data = await resp.json();
+    if (!data || data.status !== "OK" || !Array.isArray(data.result))
+      return null;
+    
+    // Codeforces API returns submissions in reverse chronological order (newest first)
+    for (const submission of data.result) {
+      if (submission && submission.verdict === "OK" && submission.problem) {
+        const { contestId, index, name, rating } = submission.problem;
+        if (rating === undefined || rating < 800 || rating > 1000) continue;
+        // submission.creationTimeSeconds is in Unix timestamp format
+        const submissionTime = submission.creationTimeSeconds || 0;
+        return { 
+          problem: { contestId, index, name, rating },
+          submissionTime 
+        };
+      }
+    }
+    return null;
+  }
+
+  private async getLatestAcceptedProblemRateLimited(
+    handle: string | null,
+  ): Promise<{ problem: SolvedProblem; submissionTime: number } | null> {
+    if (!handle) return null;
+
+    // Rate limit: wait if necessary
+    const now = Date.now();
+    const waitMs = this.CF_RATE_LIMIT_MS - (now - this.cfLastRequest);
+    if (waitMs > 0) {
+      await new Promise((resolve) => setTimeout(resolve, waitMs));
+    }
+    this.cfLastRequest = Date.now();
+
+    return await this.fetchLatestAcceptedProblem(handle);
+  }
+
+  async handleCheckAction(
+    pairKey: string,
+    ownID: number,
+    opponentID: number,
+    handles: { own: string | null; opponent: string | null },
+  ): Promise<{
+    action: string;
+    pairKey: string;
+    targetID?: number;
+  }[]> {
+    const assignedProblem = this.assignedProblems.get(pairKey);
+    if (!assignedProblem) {
+      return [
+        {
+          action: "CONTINUE",
+          pairKey,
+          targetID: ownID,
+        },
+        {
+          action: "CONTINUE",
+          pairKey,
+          targetID: opponentID,
+        },
+      ];
+    }
+
+    // Fetch latest accepted problems for both users (with rate limiting)
+    // First request - this will handle rate limiting internally
+    const ownLatest = await this.getLatestAcceptedProblemRateLimited(handles.own);
+    
+    // Always wait 2 seconds between requests to guarantee rate limit compliance
+    await new Promise((resolve) => setTimeout(resolve, this.CF_RATE_LIMIT_MS));
+    
+    // Second request - this will also handle rate limiting internally
+    const opponentLatest = await this.getLatestAcceptedProblemRateLimited(handles.opponent);
+
+    const assignedKey = `${assignedProblem.contestId}-${assignedProblem.index}`;
+    const results: { action: string; pairKey: string; targetID: number }[] = [];
+
+    let ownSolved = false;
+    let opponentSolved = false;
+    let ownTime = 0;
+    let opponentTime = 0;
+
+    // Check if own user solved it
+    if (ownLatest) {
+      const ownKey = `${ownLatest.problem.contestId}-${ownLatest.problem.index}`;
+      if (ownKey === assignedKey) {
+        ownSolved = true;
+        ownTime = ownLatest.submissionTime;
+      }
+    }
+
+    // Check if opponent solved it
+    if (opponentLatest) {
+      const opponentKey = `${opponentLatest.problem.contestId}-${opponentLatest.problem.index}`;
+      if (opponentKey === assignedKey) {
+        opponentSolved = true;
+        opponentTime = opponentLatest.submissionTime;
+      }
+    }
+
+    // Determine winner based on who solved it first (earlier time = winner)
+    if (ownSolved && opponentSolved) {
+      // Both solved it - check who solved it first
+      if (ownTime <= opponentTime) {
+        // own solved it first or at the same time
+        results.push({
+          action: "WINNER",
+          pairKey,
+          targetID: ownID,
+        });
+        results.push({
+          action: "LOSER",
+          pairKey,
+          targetID: opponentID,
+        });
+      } else {
+        // opponent solved it first
+        results.push({
+          action: "WINNER",
+          pairKey,
+          targetID: opponentID,
+        });
+        results.push({
+          action: "LOSER",
+          pairKey,
+          targetID: ownID,
+        });
+      }
+      return results;
+    } else if (ownSolved) {
+      // Only own solved it
+      results.push({
+        action: "WINNER",
+        pairKey,
+        targetID: ownID,
+      });
+      results.push({
+        action: "LOSER",
+        pairKey,
+        targetID: opponentID,
+      });
+      return results;
+    } else if (opponentSolved) {
+      // Only opponent solved it
+      results.push({
+        action: "WINNER",
+        pairKey,
+        targetID: opponentID,
+      });
+      results.push({
+        action: "LOSER",
+        pairKey,
+        targetID: ownID,
+      });
+      return results;
+    }
+
+    // No one has solved it yet - send CONTINUE message to both users
+    return [
+      {
+        action: "CONTINUE",
+        pairKey,
+        targetID: ownID,
+      },
+      {
+        action: "CONTINUE",
+        pairKey,
+        targetID: opponentID,
+      },
+    ];
   }
 
   private async selectNextProblem(
