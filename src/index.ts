@@ -13,7 +13,7 @@ import { participation } from "./controllers/ParticipationController";
 import { matchmaking } from "./controllers/MatchmakingController";
 import { helmet } from "elysia-helmet";
 import { admins } from "./controllers/AdminsController";
-import { match } from "./controllers/match/controller";
+import { match } from "./controllers/MatchController";
 
 export const app = new Elysia()
   .use(

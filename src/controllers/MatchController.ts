@@ -1,7 +1,7 @@
 import { Elysia, t } from 'elysia'
-import { SocketParams } from '../../utils/schemas/websocket';
-import { StudentService } from '../../services/StudentService';
-import { SupabaseAdapter } from '../../db/supabase/supabase.adapter';
+import { SocketParams } from '../utils/schemas/websocket';
+import { StudentService } from '../services/StudentService';
+import { SupabaseAdapter } from '../db/supabase/supabase.adapter';
 
 const matchPairs = new Map<string, Set<string>>();
 const readyStates = new Map<string, { menor: boolean, mayor: boolean }>();
@@ -96,7 +96,7 @@ async function selectNextProblem(
     opponentProblems: Array<{ contestId: number; index: string; name: string; rating: number }>
 ): Promise<{ contestId: number; index: string; name: string; rating: number } | null> {
     const allProblems = await fetchAllCFProblems();
-    
+
     const solvedSet = new Set<string>();
     for (const p of ownProblems) solvedSet.add(`${p.contestId}-${p.index}`);
     for (const p of opponentProblems) solvedSet.add(`${p.contestId}-${p.index}`);
@@ -110,11 +110,11 @@ async function selectNextProblem(
         .sort((a, b) => (a.rating ?? 0) - (b.rating ?? 0));
 
     if (candidates.length === 0) return null;
-    
+
     const selected = candidates[0] as { contestId: number; index: string; name: string; rating: number };
     const key = `${selected.contestId}-${selected.index}`;
     usedProblems.add(key);
-    
+
     return selected;
 }
 export const match = new Elysia()
@@ -153,7 +153,7 @@ export const match = new Elysia()
     })
     .ws('/ws/contest/:ownID/:opponentID', {
         params: SocketParams,
-        
+
         async open(ws) {
             const { pairKey, connId } = ws.data;
 
@@ -161,7 +161,7 @@ export const match = new Elysia()
                 matchPairs.set(pairKey, new Set());
             }
             matchPairs.get(pairKey)!.add(connId);
-            
+
             if (!readyStates.has(pairKey)) {
                 readyStates.set(pairKey, { menor: false, mayor: false });
             }
@@ -171,10 +171,10 @@ export const match = new Elysia()
                 own: (ws.data as any).problems?.own?.length ?? 0,
                 opponent: (ws.data as any).problems?.opponent?.length ?? 0,
             });
-            
+
             ws.subscribe(pairKey);
         },
-        
+
         message(ws, message: any) {
             const { pairKey, connId } = ws.data;
             const { ownID, opponentID } = ws.data.params;
@@ -228,11 +228,11 @@ export const match = new Elysia()
                     matchPairs.delete(pairKey);
                 }
             }
-            
+
             if (readyStates.has(pairKey)) {
                 readyStates.delete(pairKey);
             }
-            
+
             ws.unsubscribe(pairKey);
         }
     });
