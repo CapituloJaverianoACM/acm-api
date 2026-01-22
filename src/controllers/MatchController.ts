@@ -64,6 +64,29 @@ export const match = new Elysia()
                     Number(opponentID),
                 );
             }
+
+            if (message.action === 'CHECK') {
+                const handles = (ws.data as any).handles;
+                const checkResults = await matchService.handleCheckAction(
+                    pairKey,
+                    Number(ownID),
+                    Number(opponentID),
+                    handles,
+                );
+                // Send messages: one directly to sender, one published to opponent
+                for (const result of checkResults) {
+                    if (result.targetID === Number(ownID)) {
+                        // Send directly to the sender
+                        ws.send(result);
+                    } else if (result.targetID === Number(opponentID)) {
+                        // Publish to opponent (and other subscribers)
+                        ws.publish(pairKey, result);
+                    } else {
+                        // No targetID (like CONTINUE without specific target) - publish to all
+                        ws.publish(pairKey, result);
+                    }
+                }
+            }
         },
 
         close(ws) {
