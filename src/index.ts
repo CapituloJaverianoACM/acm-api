@@ -2,23 +2,23 @@ import "dotenv/config";
 import { Elysia } from "elysia";
 import { swagger } from "@elysiajs/swagger";
 import cors from "@elysiajs/cors";
-import { auth } from "./controllers/auth/controller";
-import { activity } from "./controllers/activity/controller";
-import { members } from "./controllers/members/controller";
-import { contests } from "./controllers/contests/controller";
-import { pictures } from "./controllers/picture/controller";
-import { results } from "./controllers/results/controller";
-import { students } from "./controllers/student/controller";
-import { participation } from "./controllers/participation/controller";
-import { matchmaking } from "./controllers/matchmaking/controller";
+import { auth } from "./controllers/AuthController";
+import { activity } from "./controllers/ActivityController";
+import { members } from "./controllers/MemberController";
+import { contests } from "./controllers/ContestController";
+import { pictures } from "./controllers/PictureController";
+import { results } from "./controllers/ResultController";
+import { students } from "./controllers/StudentController";
+import { participation } from "./controllers/ParticipationController";
+import { matchmaking } from "./controllers/MatchmakingController";
 import { helmet } from "elysia-helmet";
-import { admins } from "./controllers/admins/controller";
+import { admins } from "./controllers/AdminsController";
 import { match } from "./controllers/match/controller";
 
 export const app = new Elysia()
   .use(
     cors({
-      origin: [process.env.FRONTEND_URL_DEV!, process.env.FRONTEND_URL!],
+      origin: [process.env.FRONTEND_URL_DEV!, process.env.FRONTEND_URL_PROD!],
       credentials: true,
       methods: ["GET", "POST", "PUT", "DELETE"],
       allowedHeaders: [

@@ -1,14 +1,12 @@
 import { createClient, SupabaseClient, User } from "@supabase/supabase-js";
+import { SUPABASE_ANON_KEY, SUPABASE_URL } from "../../config/env";
 
 export default class SupabaseDB {
   private static instance: SupabaseDB | null = null;
   private client: SupabaseClient;
 
   private constructor() {
-    this.client = createClient(
-      process.env.SUPABASE_URL!,
-      process.env.SUPABASE_ANON_KEY!,
-    );
+    this.client = createClient(SUPABASE_URL!, SUPABASE_ANON_KEY!);
   }
 
   public static getInstance(): SupabaseDB {
