@@ -15,12 +15,14 @@ import { Student } from "../utils/schemas/student";
 import { StudentService } from "./StudentService";
 import { SupabaseAdapter } from "../db/supabase/supabase.adapter";
 import { Result } from "../utils/schemas/result";
+import { CONTEST_RUNNING, ParticipationService } from "./ParticipationService";
 
 const COLLECTION: string = "matchmaking";
 const PARTICIPATION_COLLECTION: string = "participation";
 const RESULT_COLLECTION: string = "results";
 
 const student_service = new StudentService(new SupabaseAdapter());
+const participation_service = new ParticipationService(new SupabaseAdapter());
 
 export class MatchmakingService {
     constructor(
@@ -179,6 +181,12 @@ export class MatchmakingService {
 
             return { error: updatedTree.error, data: null };
         }
+
+        const { error: err } = await participation_service.assignPositions(
+            contest_id,
+            tree,
+        );
+        if (err && err !== CONTEST_RUNNING) return { error: err, data: null };
 
         return { error: null, data: insertedRow ?? created.data };
     }
