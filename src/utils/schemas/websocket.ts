@@ -1,6 +1,8 @@
 import { t } from "elysia";
+import { NumericString } from "./lib";
 
 export const SocketParams = t.Object({
-    ownID: t.Numeric(),
-    opponentID: t.Numeric(),
+    contestID: NumericString,
+    ownID: NumericString,
+    opponentID: NumericString,
 });

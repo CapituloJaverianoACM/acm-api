@@ -1,462 +1,297 @@
-import { StudentService } from "./StudentService";
-
-export type CFProblem = {
-  contestId: number;
-  index: string;
-  name: string;
-  rating: number | null;
+// Tipos simples
+type CFProblem = { contestId: number; index: string; name: string; rating: number };
+type UserState = {
+    ws: any;
+    handle: string | null;
+    isReady: boolean;
+    solvedProblems: Set<string>;
 };
 
-export type SolvedProblem = {
-  contestId: number;
-  index: string;
-  name: string;
-  rating: number;
-};
-
-export type MatchConnectionData = {
-  pairKey: string;
-  connId: string;
-  handles: {
-    own: string | null;
-    opponent: string | null;
-  };
-  problems: {
-    own: SolvedProblem[];
-    opponent: SolvedProblem[];
-  };
+type MatchSession = {
+    users: Map<number, UserState>;
+    contestID: number;
+    currentProblem: CFProblem | null;
+    isActive: boolean;
+    isFinished: boolean; // El match terminó (hay ganador/perdedor)
 };
 
 export class MatchService {
-  private matchPairs = new Map<string, Set<string>>();
-  private readyStates = new Map<string, { menor: boolean; mayor: boolean }>();
-  private usedProblems = new Set<string>();
-  private assignedProblems = new Map<string, SolvedProblem | null>();
+    // Pair-key -> MatchSession
+    private sessions = new Map<string, MatchSession>();
+    private allProblemsCache: CFProblem[] = [];
+    private problemsLoaded = false;
+    private lastCFRequest = 0; // Timestamp del último request a Codeforces
 
-  // Cache for all CF problems
-  private allCFProblems: CFProblem[] = [];
-  private allCFProblemsTimestamp = 0;
-
-  // Codeforces rate-limiter and cache
-  private readonly CF_RATE_LIMIT_MS = 2000;
-  private cfLastRequest = 0;
-  private cfCache = new Map<
-    string,
-    { timestamp: number; problems: SolvedProblem[] }
-  >();
-  private cfPending = new Map<string, Promise<SolvedProblem[]>>();
-
-  constructor(private studentService: StudentService) { }
-
-  async prepareConnectionData(
-    ownID: number,
-    opponentID: number,
-  ): Promise<MatchConnectionData> {
-    const sortedIds = [ownID, opponentID].sort((a, b) => a - b);
-    const pairKey = `${sortedIds[0]}-${sortedIds[1]}`;
-    const connId = `${Date.now()}-${Math.random().toString(36).slice(2)}`;
-
-    const fetchHandle = async (id: number) => {
-      const result = await this.studentService.getOne(id);
-      if (result.error) return null;
-      const record = Array.isArray(result.data)
-        ? result.data[0]
-        : result.data;
-      return record?.codeforces_handle ?? null;
-    };
-
-    const handles = {
-      own: await fetchHandle(ownID),
-      opponent: await fetchHandle(opponentID),
-    };
-
-    const problems = {
-      own: await this.getSolvedProblemsRateLimited(handles.own),
-      opponent: await this.getSolvedProblemsRateLimited(handles.opponent),
-    };
-
-    return {
-      pairKey,
-      connId,
-      handles,
-      problems,
-    };
-  }
-
-  async handleConnectionOpen(pairKey: string, connId: string): Promise<void> {
-    if (!this.matchPairs.has(pairKey)) {
-      this.matchPairs.set(pairKey, new Set());
-    }
-    this.matchPairs.get(pairKey)!.add(connId);
-
-    if (!this.readyStates.has(pairKey)) {
-      this.readyStates.set(pairKey, { menor: false, mayor: false });
+    constructor() {
+        // Cargar problemas al iniciar
+        this.loadProblems();
     }
 
-    console.log("open pair", { pairKey, connId });
-  }
-
-  async handleConnectionClose(pairKey: string, connId: string): Promise<void> {
-    const pairSet = this.matchPairs.get(pairKey);
-    if (pairSet) {
-      pairSet.delete(connId);
-      if (pairSet.size === 0) {
-        this.matchPairs.delete(pairKey);
-      }
+    // Cargar problemas con espera
+    private async loadProblems() {
+        try {
+            console.log("Loading problems from Codeforces...");
+            const res = await fetch("https://codeforces.com/api/problemset.problems");
+            const data = await res.json();
+            if (data.status === "OK") {
+                // Filtrar solo problemas de rating 800
+                this.allProblemsCache = data.result.problems
+                    .filter((p: any) => p.rating === 800)
+                    .map((p: any) => ({
+                        contestId: p.contestId,
+                        index: p.index,
+                        name: p.name,
+                        rating: p.rating
+                    }));
+                this.problemsLoaded = true;
+                console.log(`Loaded ${this.allProblemsCache.length} problems with rating 800`);
+            }
+        } catch (e) {
+            console.error("Error loading problems from Codeforces", e);
+        }
     }
 
-    if (this.readyStates.has(pairKey)) {
-      this.readyStates.delete(pairKey);
+    // Rate limiter para Codeforces (1 request cada 2 segundos)
+    private async waitForRateLimit() {
+        const now = Date.now();
+        const timeSinceLastRequest = now - this.lastCFRequest;
+        if (timeSinceLastRequest < 2000) {
+            await new Promise(resolve => setTimeout(resolve, 2000 - timeSinceLastRequest));
+        }
+        this.lastCFRequest = Date.now();
     }
 
-    // Clean up assigned problem when all connections are closed
-    if (!this.matchPairs.has(pairKey)) {
-      this.assignedProblems.delete(pairKey);
-    }
-  }
-
-  async handleReadyAction(
-    pairKey: string,
-    ownID: number,
-    opponentID: number,
-    problems: { own: SolvedProblem[]; opponent: SolvedProblem[] },
-  ): Promise<{
-    action: string;
-    pairKey: string;
-    problem: {
-      contestId: number;
-      index: string;
-      name: string;
-      rating: number;
-    } | null;
-  } | null> {
-    const state = this.readyStates.get(pairKey)!;
-    if (ownID < opponentID) state.menor = true;
-    else state.mayor = true;
-
-    if (state.menor && state.mayor) {
-      const selected = await this.selectNextProblem(
-        problems.own,
-        problems.opponent,
-      );
-      
-      // Store the assigned problem for this pairKey
-      this.assignedProblems.set(pairKey, selected);
-      
-      return {
-        action: "START_CONTEST",
-        pairKey,
-        problem: selected
-          ? {
-            contestId: selected.contestId,
-            index: selected.index,
-            name: selected.name,
-            rating: selected.rating,
-          }
-          : null,
-      };
+    // 1. Gestión de Conexiones
+    connect(pairKey: string, contestId: number, userId: number, ws: any) {
+        if (!this.sessions.has(pairKey)) {
+            this.sessions.set(pairKey, { 
+                users: new Map(),
+                contestID: contestId, 
+                currentProblem: null, 
+                isActive: false,
+                isFinished: false
+            });
+        }
+        const session = this.sessions.get(pairKey)!;
+        
+        // Si el usuario ya existe en sesión, solo actualizamos el socket (reconexión)
+        if (session.users.has(userId)) {
+            const user = session.users.get(userId)!;
+            user.ws = ws; // Actualizar socket
+            console.log(`User ${userId} reconnected to room ${pairKey} (Match state: active=${session.isActive}, finished=${session.isFinished})`);
+        } else {
+            // Crear nuevo usuario
+            session.users.set(userId, {
+                ws,
+                handle: null,
+                isReady: false,
+                solvedProblems: new Set()
+            });
+            console.log(`User ${userId} connected to room ${pairKey}`);
+        }
     }
 
-    return null;
-  }
-
-  handleNotReadyAction(
-    pairKey: string,
-    ownID: number,
-    opponentID: number,
-  ): void {
-    const state = this.readyStates.get(pairKey)!;
-    if (ownID < opponentID) state.menor = false;
-    else state.mayor = false;
-  }
-
-  private async fetchAllCFProblems(): Promise<CFProblem[]> {
-    const now = Date.now();
-    if (
-      this.allCFProblems.length > 0 &&
-      now - this.allCFProblemsTimestamp < 60 * 60 * 1000
-    ) {
-      return this.allCFProblems;
+    disconnect(pairKey: string, userId: number) {
+        const session = this.sessions.get(pairKey);
+        if (session) {
+            session.users.delete(userId);
+            // Si la sala se vacía, la borramos para liberar memoria
+            if (session.users.size === 0) {
+                this.sessions.delete(pairKey);
+            }
+        }
     }
 
-    const resp = await fetch("https://codeforces.com/api/problemset.problems");
-    const data = await resp.json();
-    if (!data || data.status !== "OK" || !Array.isArray(data.result?.problems)) {
-      return [];
+    // 2. Manejo de READY (Idempotente)
+    async setReady(pairKey: string, userId: number, handle: string) {
+        const session = this.sessions.get(pairKey);
+        if (!session) return;
+
+        const user = session.users.get(userId);
+        if (!user) return;
+
+        // No permitir READY si el match ya está activo o terminado
+        if (session.isActive) {
+            console.log(`[${pairKey}] User ${userId} tried READY but match is already active. Ignoring.`);
+            return;
+        }
+
+        if (session.isFinished) {
+            console.log(`[${pairKey}] User ${userId} tried READY but match is finished. Ignoring.`);
+            return;
+        }
+
+        // Guardar handle y cargar problemas resueltos si cambió el handle
+        if (user.handle !== handle) {
+            user.handle = handle;
+            user.solvedProblems = await this.fetchUserSolved(handle);
+            console.log(`User ${userId} (${handle}) problems loaded: ${user.solvedProblems.size}`);
+        }
+
+        user.isReady = true;
+        console.log(`User ${userId} (${handle}) is READY`);
+
+        // Intentar iniciar la partida
+        this.tryStartMatch(pairKey, session);
     }
 
-    this.allCFProblems = data.result.problems.map((p: any) => ({
-      contestId: p.contestId,
-      index: p.index,
-      name: p.name,
-      rating: p.rating ?? null,
-    }));
-    this.allCFProblemsTimestamp = now;
-    return this.allCFProblems;
-  }
+    setNotReady(pairKey: string, userId: number) {
+        const session = this.sessions.get(pairKey);
+        if (!session) return;
 
-  private async fetchUserSolvedProblems(
-    handle: string | null,
-  ): Promise<SolvedProblem[]> {
-    if (!handle) return [];
-    const resp = await fetch(
-      `https://codeforces.com/api/user.status?handle=${encodeURIComponent(handle)}`,
-    );
-    const data = await resp.json();
-    if (!data || data.status !== "OK" || !Array.isArray(data.result))
-      return [];
-    const unique = new Map<string, SolvedProblem>();
-    for (const submission of data.result) {
-      if (submission && submission.verdict === "OK" && submission.problem) {
-        const { contestId, index, name, rating } = submission.problem;
-        if (rating === undefined || rating < 800 || rating > 1000) continue;
-        const key = `${contestId}-${index}`;
-        if (!unique.has(key))
-          unique.set(key, { contestId, index, name, rating });
-      }
-    }
-    return Array.from(unique.values());
-  }
+        // No permitir NOT_READY si el match está activo o terminado
+        if (session.isActive) {
+            console.log(`[${pairKey}] User ${userId} tried NOT_READY but match is active. Ignoring.`);
+            return;
+        }
 
-  private async getSolvedProblemsRateLimited(
-    handle: string | null,
-  ): Promise<SolvedProblem[]> {
-    if (!handle) return [];
+        if (session.isFinished) {
+            console.log(`[${pairKey}] User ${userId} tried NOT_READY but match is finished. Ignoring.`);
+            return;
+        }
 
-    // If already cached, return immediately
-    const cached = this.cfCache.get(handle);
-    if (cached && Date.now() - cached.timestamp < 5 * 60 * 1000) {
-      return cached.problems;
+        if (session.users.has(userId)) {
+            session.users.get(userId)!.isReady = false;
+            console.log(`[${pairKey}] User ${userId} is NOT READY`);
+        }
     }
 
-    // If a request is already pending for this handle, wait for it instead of making a duplicate
-    if (this.cfPending.has(handle)) {
-      return this.cfPending.get(handle)!;
-    }
+    // 3. Iniciar Partida
+    private tryStartMatch(pairKey: string, session: MatchSession) {
+        // Necesitamos exactamente 2 usuarios listos
+        if (session.users.size !== 2) {
+            console.log(`[${pairKey}] Waiting for 2 users. Current: ${session.users.size}`);
+            return;
+        }
 
-    // Create and track the promise
-    const promise = (async () => {
-      const now = Date.now();
-      const waitMs = this.CF_RATE_LIMIT_MS - (now - this.cfLastRequest);
-      if (waitMs > 0) {
-        await new Promise((resolve) => setTimeout(resolve, waitMs));
-      }
-      this.cfLastRequest = Date.now();
+        const users = Array.from(session.users.values());
+        const allReady = users.every(u => u.isReady);
 
-      const problems = await this.fetchUserSolvedProblems(handle);
-      this.cfCache.set(handle, { timestamp: Date.now(), problems });
-      return problems;
-    })();
+        if (!allReady) {
+            console.log(`[${pairKey}] Not all users ready. Ready count: ${users.filter(u => u.isReady).length}/2`);
+            return;
+        }
 
-    this.cfPending.set(handle, promise);
-    const result = await promise;
-    this.cfPending.delete(handle);
-    return result;
-  }
+        if (!this.problemsLoaded) {
+            console.log(`[${pairKey}] Problems not loaded yet`);
+            return;
+        }
 
-  private async fetchLatestAcceptedProblem(
-    handle: string | null,
-  ): Promise<{ problem: SolvedProblem; submissionTime: number } | null> {
-    if (!handle) return null;
-    const resp = await fetch(
-      `https://codeforces.com/api/user.status?handle=${encodeURIComponent(handle)}`,
-    );
-    const data = await resp.json();
-    if (!data || data.status !== "OK" || !Array.isArray(data.result))
-      return null;
-    
-    // Codeforces API returns submissions in reverse chronological order (newest first)
-    for (const submission of data.result) {
-      if (submission && submission.verdict === "OK" && submission.problem) {
-        const { contestId, index, name, rating } = submission.problem;
-        if (rating === undefined || rating < 800 || rating > 1000) continue;
-        // submission.creationTimeSeconds is in Unix timestamp format
-        const submissionTime = submission.creationTimeSeconds || 0;
-        return { 
-          problem: { contestId, index, name, rating },
-          submissionTime 
+        // Buscar problema
+        const problem = this.findFairProblem(users[0], users[1]);
+
+        if (!problem) {
+            console.log(`[${pairKey}] No fair problem found for these users`);
+            return;
+        }
+
+        // Iniciar partida
+        session.currentProblem = problem;
+        session.isActive = true;
+
+        const msg = {
+            action: 'START_MATCH',
+            data: problem
         };
-      }
-    }
-    return null;
-  }
 
-  private async getLatestAcceptedProblemRateLimited(
-    handle: string | null,
-  ): Promise<{ problem: SolvedProblem; submissionTime: number } | null> {
-    if (!handle) return null;
-
-    // Rate limit: wait if necessary
-    const now = Date.now();
-    const waitMs = this.CF_RATE_LIMIT_MS - (now - this.cfLastRequest);
-    if (waitMs > 0) {
-      await new Promise((resolve) => setTimeout(resolve, waitMs));
-    }
-    this.cfLastRequest = Date.now();
-
-    return await this.fetchLatestAcceptedProblem(handle);
-  }
-
-  async handleCheckAction(
-    pairKey: string,
-    ownID: number,
-    opponentID: number,
-    handles: { own: string | null; opponent: string | null },
-  ): Promise<{
-    action: string;
-    pairKey: string;
-    targetID?: number;
-  }[]> {
-    const assignedProblem = this.assignedProblems.get(pairKey);
-    if (!assignedProblem) {
-      return [
-        {
-          action: "CONTINUE",
-          pairKey,
-          targetID: ownID,
-        },
-        {
-          action: "CONTINUE",
-          pairKey,
-          targetID: opponentID,
-        },
-      ];
+        users.forEach(u => u.ws.send(JSON.stringify(msg)));
+        console.log(`[${pairKey}] Match started: ${problem.name}`);
     }
 
-    // Fetch latest accepted problems for both users (with rate limiting)
-    // First request - this will handle rate limiting internally
-    const ownLatest = await this.getLatestAcceptedProblemRateLimited(handles.own);
-    
-    // Always wait 2 seconds between requests to guarantee rate limit compliance
-    await new Promise((resolve) => setTimeout(resolve, this.CF_RATE_LIMIT_MS));
-    
-    // Second request - this will also handle rate limiting internally
-    const opponentLatest = await this.getLatestAcceptedProblemRateLimited(handles.opponent);
+    // 4. Verificar Victoria (CHECK)
+    async checkWinCondition(pairKey: string, userId: number) {
+        const session = this.sessions.get(pairKey);
+        if (!session || !session.isActive || !session.currentProblem) {
+            console.log(`[${pairKey}] Invalid session state for check`);
+            return;
+        }
 
-    const assignedKey = `${assignedProblem.contestId}-${assignedProblem.index}`;
-    const results: { action: string; pairKey: string; targetID: number }[] = [];
+        // No permitir CHECK si el match ya terminó
+        if (session.isFinished) {
+            console.log(`[${pairKey}] User ${userId} tried CHECK but match is finished. Ignoring.`);
+            return;
+        }
 
-    let ownSolved = false;
-    let opponentSolved = false;
-    let ownTime = 0;
-    let opponentTime = 0;
+        const user = session.users.get(userId);
+        if (!user || !user.handle) return;
 
-    // Check if own user solved it
-    if (ownLatest) {
-      const ownKey = `${ownLatest.problem.contestId}-${ownLatest.problem.index}`;
-      if (ownKey === assignedKey) {
-        ownSolved = true;
-        ownTime = ownLatest.submissionTime;
-      }
+        // Verificar en Codeforces si resolvió el problema actual
+        const isSolved = await this.verifySpecificProblem(user.handle, session.currentProblem);
+
+        if (isSolved) {
+            // Usuario ganó
+            user.ws.send(JSON.stringify({ action: 'WINNER' }));
+            console.log(`[${pairKey}] User ${userId} WINNER`);
+
+            // Notificar al otro usuario
+            for (const [otherId, otherUser] of session.users) {
+                if (otherId !== userId) {
+                    otherUser.ws.send(JSON.stringify({ action: 'LOSER' }));
+                    console.log(`[${pairKey}] User ${otherId} LOSER`);
+                }
+            }
+
+            // Terminar partida
+            session.isActive = false;
+            session.isFinished = true; // Marcar como terminado
+            session.currentProblem = null;
+            session.users.forEach(u => u.isReady = false);
+        } else {
+            // Continuar
+            user.ws.send(JSON.stringify({ action: 'CONTINUE' }));
+        }
     }
 
-    // Check if opponent solved it
-    if (opponentLatest) {
-      const opponentKey = `${opponentLatest.problem.contestId}-${opponentLatest.problem.index}`;
-      if (opponentKey === assignedKey) {
-        opponentSolved = true;
-        opponentTime = opponentLatest.submissionTime;
-      }
+    // --- Helpers de Codeforces ---
+
+    private findFairProblem(userA: UserState, userB: UserState): CFProblem | null {
+        const candidates = this.allProblemsCache.filter(p =>
+            !userA.solvedProblems.has(`${p.contestId}-${p.index}`) &&
+            !userB.solvedProblems.has(`${p.contestId}-${p.index}`)
+        );
+
+        if (candidates.length === 0) return null;
+        return candidates[Math.floor(Math.random() * candidates.length)];
     }
 
-    // Determine winner based on who solved it first (earlier time = winner)
-    if (ownSolved && opponentSolved) {
-      // Both solved it - check who solved it first
-      if (ownTime <= opponentTime) {
-        // own solved it first or at the same time
-        results.push({
-          action: "WINNER",
-          pairKey,
-          targetID: ownID,
-        });
-        results.push({
-          action: "LOSER",
-          pairKey,
-          targetID: opponentID,
-        });
-      } else {
-        // opponent solved it first
-        results.push({
-          action: "WINNER",
-          pairKey,
-          targetID: opponentID,
-        });
-        results.push({
-          action: "LOSER",
-          pairKey,
-          targetID: ownID,
-        });
-      }
-      return results;
-    } else if (ownSolved) {
-      // Only own solved it
-      results.push({
-        action: "WINNER",
-        pairKey,
-        targetID: ownID,
-      });
-      results.push({
-        action: "LOSER",
-        pairKey,
-        targetID: opponentID,
-      });
-      return results;
-    } else if (opponentSolved) {
-      // Only opponent solved it
-      results.push({
-        action: "WINNER",
-        pairKey,
-        targetID: opponentID,
-      });
-      results.push({
-        action: "LOSER",
-        pairKey,
-        targetID: ownID,
-      });
-      return results;
+    private async fetchUserSolved(handle: string): Promise<Set<string>> {
+        const solved = new Set<string>();
+        try {
+            await this.waitForRateLimit();
+            const res = await fetch(`https://codeforces.com/api/user.status?handle=${handle}`);
+            const data = await res.json();
+
+            if (data.status === "OK" && data.result) {
+                data.result.forEach((sub: any) => {
+                    if (sub.verdict === "OK") {
+                        solved.add(`${sub.problem.contestId}-${sub.problem.index}`);
+                    }
+                });
+            } else {
+                console.warn(`Failed to fetch user ${handle}:`, data.comment);
+            }
+        } catch (e) {
+            console.error(`Error fetching user ${handle}:`, e);
+        }
+        return solved;
     }
 
-    // No one has solved it yet - send CONTINUE message to both users
-    return [
-      {
-        action: "CONTINUE",
-        pairKey,
-        targetID: ownID,
-      },
-      {
-        action: "CONTINUE",
-        pairKey,
-        targetID: opponentID,
-      },
-    ];
-  }
+    private async verifySpecificProblem(handle: string, problem: CFProblem): Promise<boolean> {
+        try {
+            await this.waitForRateLimit();
+            const res = await fetch(`https://codeforces.com/api/user.status?handle=${handle}&from=1&count=5`);
+            const data = await res.json();
 
-  private async selectNextProblem(
-    ownProblems: SolvedProblem[],
-    opponentProblems: SolvedProblem[],
-  ): Promise<SolvedProblem | null> {
-    const allProblems = await this.fetchAllCFProblems();
-
-    const solvedSet = new Set<string>();
-    for (const p of ownProblems) solvedSet.add(`${p.contestId}-${p.index}`);
-    for (const p of opponentProblems)
-      solvedSet.add(`${p.contestId}-${p.index}`);
-
-    const candidates = allProblems
-      .filter((p) => {
-        if (p.rating === null || p.rating < 800 || p.rating > 1000)
-          return false;
-        const key = `${p.contestId}-${p.index}`;
-        return !solvedSet.has(key) && !this.usedProblems.has(key);
-      })
-      .sort((a, b) => (a.rating ?? 0) - (b.rating ?? 0));
-
-    if (candidates.length === 0) return null;
-
-    const selected = candidates[0] as SolvedProblem;
-    const key = `${selected.contestId}-${selected.index}`;
-    this.usedProblems.add(key);
-
-    return selected;
-  }
+            if (data.status === "OK" && data.result) {
+                return data.result.some((sub: any) =>
+                    sub.verdict === "OK" &&
+                    sub.problem.contestId === problem.contestId &&
+                    sub.problem.index === problem.index
+                );
+            }
+        } catch (e) {
+            console.error(`Error verifying problem for ${handle}:`, e);
+        }
+        return false;
+    }
 }
