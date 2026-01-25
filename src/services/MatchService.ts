@@ -163,7 +163,7 @@ export class MatchService {
 
         let session = await getSessionByPairKey(pairKey);
 
-        if (session && session.isFinished) {
+        if (session) {
             if (session.isFinished) {
                 this.sendError(
                     pairKey,
