@@ -15,7 +15,7 @@ export type StoredUserState = {
 
 export type StoredMatchSession = {
     pairKey: string;
-    contestID: number;
+    contestId: number;
     currentProblem: {
         contestId: number;
         index: string;
@@ -88,7 +88,7 @@ export async function createSession(
 ): Promise<{ error: string | null; data: StoredMatchSession | null }> {
     const newSession: StoredMatchSession = {
         pairKey,
-        contestID: contestId,
+        contestId,
         currentProblem: null,
         isActive: false,
         isFinished: false,
@@ -174,24 +174,6 @@ export async function addUserToSession(
     return await updateSession(pairKey, { users: session.users });
 }
 
-export async function removeUserFromSession(
-    pairKey: string,
-    userId: number,
-): Promise<{ error: string | null; data: any }> {
-    const session = await getSessionByPairKey(pairKey);
-    if (!session) {
-        return { error: "Session not found", data: null };
-    }
-
-    session.users = session.users.filter((u) => u.userId !== userId);
-
-    // If no users left, delete the session
-    if (session.users.length === 0) {
-        return await deleteSession(pairKey);
-    }
-
-    return await updateSession(pairKey, { users: session.users });
-}
 
 export async function updateUserReadyStatus(
     pairKey: string,

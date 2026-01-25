@@ -20,11 +20,11 @@ import {
     updateSession,
     deleteSession,
     addUserToSession,
-    removeUserFromSession,
     updateUserReadyStatus,
     updateUserSolvedProblems,
 } from "../utils/session-manager";
 import { WebSocketError, getErrorMessage } from "../utils/websocket-errors";
+import { WebSocketMessenger } from "../utils/websocket-messenger";
 import { ResultService } from "./ResultService";
 
 const result_service = new ResultService(new SupabaseAdapter());
@@ -35,6 +35,13 @@ export class MatchService {
     private allProblemsCache: CFProblem[] = [];
     private problemsLoaded = false;
     private lastCFRequest = 0; // Timestamp del último request a Codeforces
+    private messenger: WebSocketMessenger;
+
+    constructor() {
+        this.messenger = new WebSocketMessenger(this.activeConnections);
+        // Cargar problemas al iniciar
+        this.loadProblems();
+    }
 
     // Helper to send error messages through WebSocket
     private sendError(
@@ -43,27 +50,24 @@ export class MatchService {
         error: WebSocketError,
         context?: string,
     ) {
-        const ws = this.getConnection(pairKey, userId);
-        if (ws) {
-            const errorMessage = getErrorMessage(error);
-            ws.send(
-                JSON.stringify({
-                    action: "ERROR",
-                    error: error,
-                    message: errorMessage,
-                    context: context || null,
-                }),
-            );
-            console.error(
-                `[${pairKey}] Error for user ${userId}: ${error} - ${errorMessage}${context ? ` (${context})` : ""}`,
-            );
-        }
+        this.messenger.sendError(
+            pairKey,
+            userId,
+            error,
+            getErrorMessage(error),
+            context,
+        );
+        console.error(
+            `[${pairKey}] Error for user ${userId}: ${error} - ${getErrorMessage(
+                error,
+            )}${context ? ` (${context})` : ""}`,
+        );
     }
 
     // Helper to convert stored session to in-memory format with WebSockets
     private async getSessionWithConnections(pairKey: string): Promise<{
         users: Map<number, UserState>;
-        contestID: number;
+        contestId: number;
         currentProblem: CFProblem | null;
         isActive: boolean;
         isFinished: boolean;
@@ -84,7 +88,7 @@ export class MatchService {
 
         return {
             users,
-            contestID: storedSession.contestID,
+            contestId: storedSession.contestId,
             currentProblem: storedSession.currentProblem,
             isActive: storedSession.isActive,
             isFinished: storedSession.isFinished,
@@ -111,11 +115,6 @@ export class MatchService {
 
     private getConnection(pairKey: string, userId: number): any | null {
         return this.activeConnections.get(pairKey)?.get(userId) || null;
-    }
-
-    constructor() {
-        // Cargar problemas al iniciar
-        this.loadProblems();
     }
 
     // Cargar problemas con espera
@@ -175,8 +174,16 @@ export class MatchService {
                 return;
             }
 
-            ws.send(JSON.stringify({ action: "SESSION_RESUME", data: { session } }));
-            return;
+            const thisUserExists = session.users.find(user => user.userId === userId);
+            
+            if (thisUserExists) {
+                this.messenger.sendSessionResume(pairKey, userId, session);
+                console.log(
+                `User ${userId} reconnected to room ${pairKey} (Match state: active=${session.isActive}, finished=${session.isFinished})`,
+            );
+                return; 
+            }
+
         }
 
         if (!session) {
@@ -196,11 +203,7 @@ export class MatchService {
 
         // Check if user already exists in session
         const existingUser = session.users.find((u) => u.userId === userId);
-        if (existingUser) {
-            console.log(
-                `User ${userId} reconnected to room ${pairKey} (Match state: active=${session.isActive}, finished=${session.isFinished})`,
-            );
-        } else {
+        if (!existingUser) {
             // Add new user to session
             const result = await addUserToSession(
                 pairKey,
@@ -223,17 +226,6 @@ export class MatchService {
     async disconnect(pairKey: string, userId: number) {
         // Remove WebSocket connection from memory
         this.removeConnection(pairKey, userId);
-
-        // Remove user from session in database
-        const result = await removeUserFromSession(pairKey, userId);
-        if (result.error) {
-            this.sendError(
-                pairKey,
-                userId,
-                WebSocketError.USER_REMOVE_FAILED,
-                "disconnect",
-            );
-        }
     }
 
     // 2. Manejo de READY (Idempotente)
@@ -479,16 +471,15 @@ export class MatchService {
             return;
         }
 
-        const msg = {
-            action: "START_MATCH",
-            data: problem,
-        };
-
-        // Send to both users
-        session.users.forEach((user) => {
-            const ws = this.getConnection(pairKey, user.userId);
-            if (ws) {
-                ws.send(JSON.stringify(msg));
+        // Send to both users using messenger
+        this.messenger.sendMatchStart(pairKey, {
+            pairKey,
+            problem: {
+                contestId: problem.contestId,
+                index: problem.index,
+                name: problem.name,
+                rating: problem.rating,
+                url: `https://codeforces.com/problemset/problem/${problem.contestId}/${problem.index}`
             }
         });
 
@@ -563,7 +554,7 @@ export class MatchService {
                 .map((us) => us.userId)[0];
 
             const res = await result_service.create({
-                contest_id: session.contestID,
+                contest_id: session.contestId,
                 winner_id: userId,
                 local_id: userId,
                 visitant_id: looser_id,
@@ -579,24 +570,22 @@ export class MatchService {
                 return;
             }
 
-            // Usuario ganó
-            const ws = this.getConnection(pairKey, userId);
-            if (ws) {
-                ws.send(JSON.stringify({ action: "WINNER" }));
-            }
+            // Usuario ganó - use messenger
+            this.messenger.sendWinner(pairKey, userId, {
+                pairKey,
+                userId
+            });
             console.log(`[${pairKey}] User ${userId} WINNER`);
 
-            // Notificar al otro usuario
-            session.users.forEach((otherUser) => {
-                if (otherUser.userId !== userId) {
-                    looser_id = otherUser.userId;
-                    const otherWs = this.getConnection(pairKey, otherUser.userId);
-                    if (otherWs) {
-                        otherWs.send(JSON.stringify({ action: "LOSER" }));
-                    }
-                    console.log(`[${pairKey}] User ${otherUser.userId} LOSER`);
+            this.messenger.sendLoser(pairKey, looser_id, {
+                pairKey,
+                userId: looser_id,
+                opponent: {
+                    userId: userId,
+                    handle: user.handle
                 }
             });
+            console.log(`[${pairKey}] User ${looser_id} LOSER`);
 
             // Terminar partida
             const result = await updateSession(pairKey, {
@@ -634,11 +623,8 @@ export class MatchService {
             // Remove session from cache
             deleteSession(pairKey);
         } else {
-            // Continuar
-            const ws = this.getConnection(pairKey, userId);
-            if (ws) {
-                ws.send(JSON.stringify({ action: "CONTINUE" }));
-            }
+            // Continuar - use messenger
+            this.messenger.sendContinue(pairKey, userId);
         }
     }
 

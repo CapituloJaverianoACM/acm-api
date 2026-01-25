@@ -3,6 +3,7 @@ import { SocketParams } from '../utils/schemas/websocket';
 import { MatchService } from '../services/MatchService';
 import { jwtPlugin } from '../utils/macros/auth';
 import { BadRequest } from '../utils/responses';
+import { IncomingWebSocketMessage, WebSocketAction } from '../utils/websocket-types';
 
 // Instancia única (Singleton)
 const matchService = new MatchService();
@@ -37,23 +38,34 @@ export const match = new Elysia()
             matchService.connect(pairKey, idFromContest, userId, ws);
         },
 
-        async message(ws, message: any) {
+        async message(ws, message: IncomingWebSocketMessage) {
             const { pairKey, userId } = ws.data;
 
-            if (message.action === 'READY') {
-                const handle = message.data?.handle;
-                if (handle) {
-                    await matchService.setReady(pairKey, userId, handle);
-                }
+            // Type guard to ensure message has valid action
+            if (!message.action || !Object.values(WebSocketAction).includes(message.action)) {
+                console.error(`[WebSocket] Invalid message action: ${message.action}`);
+                return;
             }
 
-            if (message.action === 'NOT_READY') {
-                matchService.setNotReady(pairKey, userId);
-            }
+            switch (message.action) {
+                case WebSocketAction.READY:
+                    if ('handle' in message.data && message.data.handle) {
+                        await matchService.setReady(pairKey, userId, message.data.handle);
+                    } else {
+                        console.error(`[WebSocket] READY message missing handle`);
+                    }
+                    break;
 
-            if (message.action === 'CHECK') {
-                // El usuario pide verificar si ganó
-                await matchService.checkWinCondition(pairKey, userId);
+                case WebSocketAction.NOT_READY:
+                    await matchService.setNotReady(pairKey, userId);
+                    break;
+
+                case WebSocketAction.CHECK:
+                    await matchService.checkWinCondition(pairKey, userId);
+                    break;
+
+                default:
+                    console.warn(`[WebSocket] Unhandled action: ${message.action}`);
             }
         },
 
