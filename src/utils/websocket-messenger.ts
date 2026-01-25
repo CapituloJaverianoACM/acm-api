@@ -67,20 +67,18 @@ export class WebSocketMessenger {
         return this.sendToUser(pairKey, userId, WebSocketAction.SESSION_RESUME, sessionData);
     }
 
-    sendUserReady(pairKey: string, userId: number, handle: string, solvedProblems: number): number {
+    sendUserReady(pairKey: string, userId: number): number {
         return this.sendToSession(pairKey, WebSocketAction.USER_READY, {
             pairKey,
             userId,
-            handle,
-            solvedProblems
-        });
+        }, userId);
     }
 
     sendUserNotReady(pairKey: string, userId: number): number {
         return this.sendToSession(pairKey, WebSocketAction.USER_NOT_READY, {
             pairKey,
             userId
-        });
+        }, userId);
     }
 
     sendMatchStart(pairKey: string, problem: MatchStartData): number {

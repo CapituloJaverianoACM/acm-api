@@ -25,6 +25,7 @@ import {
 } from "../utils/session-manager";
 import { WebSocketError, getErrorMessage } from "../utils/websocket-errors";
 import { WebSocketMessenger } from "../utils/websocket-messenger";
+import { WebSocketAction } from "../utils/websocket-types";
 import { ResultService } from "./ResultService";
 
 const result_service = new ResultService(new SupabaseAdapter());
@@ -312,6 +313,8 @@ export class MatchService {
 
         console.log(`User ${userId} (${handle}) is READY`);
 
+        this.messenger.sendUserReady(pairKey, userId);
+
         // Intentar iniciar la partida
         this.tryStartMatch(pairKey);
     }
@@ -362,6 +365,7 @@ export class MatchService {
                 return;
             }
             console.log(`[${pairKey}] User ${userId} is NOT READY`);
+            this.messenger.sendUserNotReady(pairKey, userId);
         } else {
             this.sendError(
                 pairKey,

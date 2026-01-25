@@ -105,8 +105,6 @@ export interface MatchCancelledData {
 export interface UserReadyData {
     pairKey: string;
     userId: number;
-    handle: string;
-    solvedProblems: number;
 }
 
 export interface UserNotReadyData {
