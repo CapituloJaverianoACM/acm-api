@@ -4,6 +4,7 @@ import { MatchmakingTreeNode } from "./matchmaking-tree";
 
 const COLLECTION = "matchmaking";
 const db: IDatabase = new MongoAdapter();
+const CACHE_TREE_SIZE = 5;
 
 export var catcheContestTree: Map<number, MatchmakingTreeNode> = new Map();
 
@@ -20,7 +21,7 @@ export async function getTreeByContestId(contestId: number) {
     const treeData = result.data.tree;
     const rootNode = treeData as MatchmakingTreeNode;
     catcheContestTree.set(contestId, rootNode);
-    if (catcheContestTree.size > 5) {
+    if (catcheContestTree.size > CACHE_TREE_SIZE) {
       // Delete oldest cache
       const firstKey = catcheContestTree.keys().next().value;
       if (firstKey !== undefined) catcheContestTree.delete(firstKey);
