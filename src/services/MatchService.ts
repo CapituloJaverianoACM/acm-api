@@ -1,5 +1,10 @@
 // Tipos simples
-type CFProblem = { contestId: number; index: string; name: string; rating: number };
+type CFProblem = {
+    contestId: number;
+    index: string;
+    name: string;
+    rating: number;
+};
 type UserState = {
     ws: any;
     handle: string | null;
@@ -7,20 +12,108 @@ type UserState = {
     solvedProblems: Set<string>;
 };
 
-type MatchSession = {
-    users: Map<number, UserState>;
-    contestID: number;
-    currentProblem: CFProblem | null;
-    isActive: boolean;
-    isFinished: boolean; // El match terminó (hay ganador/perdedor)
-};
+import { SupabaseAdapter } from "../db/supabase/supabase.adapter";
+// Import session manager
+import {
+    getSessionByPairKey,
+    createSession,
+    updateSession,
+    deleteSession,
+    addUserToSession,
+    removeUserFromSession,
+    updateUserReadyStatus,
+    updateUserSolvedProblems,
+} from "../utils/session-manager";
+import { WebSocketError, getErrorMessage } from "../utils/websocket-errors";
+import { ResultService } from "./ResultService";
+
+const result_service = new ResultService(
+    new SupabaseAdapter(),
+);
 
 export class MatchService {
-    // Pair-key -> MatchSession
-    private sessions = new Map<string, MatchSession>();
+    // In-memory cache for WebSocket connections (not persisted)
+    private activeConnections = new Map<string, Map<number, any>>();
     private allProblemsCache: CFProblem[] = [];
     private problemsLoaded = false;
     private lastCFRequest = 0; // Timestamp del último request a Codeforces
+
+    // Helper to send error messages through WebSocket
+    private sendError(
+        pairKey: string,
+        userId: number,
+        error: WebSocketError,
+        context?: string,
+    ) {
+        const ws = this.getConnection(pairKey, userId);
+        if (ws) {
+            const errorMessage = getErrorMessage(error);
+            ws.send(
+                JSON.stringify({
+                    action: "ERROR",
+                    error: error,
+                    message: errorMessage,
+                    context: context || null,
+                }),
+            );
+            console.error(
+                `[${pairKey}] Error for user ${userId}: ${error} - ${errorMessage}${context ? ` (${context})` : ""}`,
+            );
+        }
+    }
+
+    // Helper to convert stored session to in-memory format with WebSockets
+    private async getSessionWithConnections(pairKey: string): Promise<{
+        users: Map<number, UserState>;
+        contestID: number;
+        currentProblem: CFProblem | null;
+        isActive: boolean;
+        isFinished: boolean;
+    } | null> {
+        const storedSession = await getSessionByPairKey(pairKey);
+        if (!storedSession) return null;
+
+        const users = new Map<number, UserState>();
+        storedSession.users.forEach((storedUser) => {
+            const ws = this.activeConnections.get(pairKey)?.get(storedUser.userId);
+            users.set(storedUser.userId, {
+                ws: ws || null,
+                handle: storedUser.handle,
+                isReady: storedUser.isReady,
+                solvedProblems: new Set(storedUser.solvedProblems),
+            });
+        });
+
+        return {
+            users,
+            contestID: storedSession.contestID,
+            currentProblem: storedSession.currentProblem,
+            isActive: storedSession.isActive,
+            isFinished: storedSession.isFinished,
+        };
+    }
+
+    // Helper to manage active connections
+    private addConnection(pairKey: string, userId: number, ws: any) {
+        if (!this.activeConnections.has(pairKey)) {
+            this.activeConnections.set(pairKey, new Map());
+        }
+        this.activeConnections.get(pairKey)!.set(userId, ws);
+    }
+
+    private removeConnection(pairKey: string, userId: number) {
+        const connections = this.activeConnections.get(pairKey);
+        if (connections) {
+            connections.delete(userId);
+            if (connections.size === 0) {
+                this.activeConnections.delete(pairKey);
+            }
+        }
+    }
+
+    private getConnection(pairKey: string, userId: number): any | null {
+        return this.activeConnections.get(pairKey)?.get(userId) || null;
+    }
 
     constructor() {
         // Cargar problemas al iniciar
@@ -41,10 +134,12 @@ export class MatchService {
                         contestId: p.contestId,
                         index: p.index,
                         name: p.name,
-                        rating: p.rating
+                        rating: p.rating,
                     }));
                 this.problemsLoaded = true;
-                console.log(`Loaded ${this.allProblemsCache.length} problems with rating 800`);
+                console.log(
+                    `Loaded ${this.allProblemsCache.length} problems with rating 800`,
+                );
             }
         } catch (e) {
             console.error("Error loading problems from Codeforces", e);
@@ -56,198 +151,498 @@ export class MatchService {
         const now = Date.now();
         const timeSinceLastRequest = now - this.lastCFRequest;
         if (timeSinceLastRequest < 2000) {
-            await new Promise(resolve => setTimeout(resolve, 2000 - timeSinceLastRequest));
+            await new Promise((resolve) =>
+                setTimeout(resolve, 2000 - timeSinceLastRequest),
+            );
         }
         this.lastCFRequest = Date.now();
     }
 
     // 1. Gestión de Conexiones
-    connect(pairKey: string, contestId: number, userId: number, ws: any) {
-        if (!this.sessions.has(pairKey)) {
-            this.sessions.set(pairKey, { 
-                users: new Map(),
-                contestID: contestId, 
-                currentProblem: null, 
-                isActive: false,
-                isFinished: false
-            });
+    async connect(pairKey: string, contestId: number, userId: number, ws: any) {
+        // Add WebSocket connection to memory cache
+        this.addConnection(pairKey, userId, ws);
+
+        let session = await getSessionByPairKey(pairKey);
+
+        if (session && session.isFinished) {
+            this.sendError(
+                pairKey,
+                userId,
+                WebSocketError.MATCH_ALREADY_FINISHED,
+                "connect",
+            );
+            ws.close();
         }
-        const session = this.sessions.get(pairKey)!;
-        
-        // Si el usuario ya existe en sesión, solo actualizamos el socket (reconexión)
-        if (session.users.has(userId)) {
-            const user = session.users.get(userId)!;
-            user.ws = ws; // Actualizar socket
-            console.log(`User ${userId} reconnected to room ${pairKey} (Match state: active=${session.isActive}, finished=${session.isFinished})`);
+
+        if (!session) {
+            // Create new session if it doesn't exist
+            const result = await createSession(pairKey, contestId);
+            if (result.error) {
+                this.sendError(
+                    pairKey,
+                    userId,
+                    WebSocketError.SESSION_CREATION_FAILED,
+                    "connect",
+                );
+                return;
+            }
+            session = result.data!;
+        }
+
+        // Check if user already exists in session
+        const existingUser = session.users.find((u) => u.userId === userId);
+        if (existingUser) {
+            console.log(
+                `User ${userId} reconnected to room ${pairKey} (Match state: active=${session.isActive}, finished=${session.isFinished})`,
+            );
         } else {
-            // Crear nuevo usuario
-            session.users.set(userId, {
-                ws,
-                handle: null,
-                isReady: false,
-                solvedProblems: new Set()
-            });
+            // Add new user to session
+            const result = await addUserToSession(
+                pairKey,
+                userId,
+                ws.message?.data?.handle,
+            );
+            if (result.error) {
+                this.sendError(
+                    pairKey,
+                    userId,
+                    WebSocketError.USER_ADD_FAILED,
+                    "connect",
+                );
+                return;
+            }
             console.log(`User ${userId} connected to room ${pairKey}`);
         }
     }
 
-    disconnect(pairKey: string, userId: number) {
-        const session = this.sessions.get(pairKey);
-        if (session) {
-            session.users.delete(userId);
-            // Si la sala se vacía, la borramos para liberar memoria
-            if (session.users.size === 0) {
-                this.sessions.delete(pairKey);
-            }
+    async disconnect(pairKey: string, userId: number) {
+        // Remove WebSocket connection from memory
+        this.removeConnection(pairKey, userId);
+
+        // Remove user from session in database
+        const result = await removeUserFromSession(pairKey, userId);
+        if (result.error) {
+            this.sendError(
+                pairKey,
+                userId,
+                WebSocketError.USER_REMOVE_FAILED,
+                "disconnect",
+            );
         }
     }
 
     // 2. Manejo de READY (Idempotente)
     async setReady(pairKey: string, userId: number, handle: string) {
-        const session = this.sessions.get(pairKey);
-        if (!session) return;
+        const session = await getSessionByPairKey(pairKey);
+        if (!session) {
+            this.sendError(
+                pairKey,
+                userId,
+                WebSocketError.SESSION_NOT_FOUND,
+                "setReady",
+            );
+            return;
+        }
 
-        const user = session.users.get(userId);
-        if (!user) return;
+        const user = session.users.find((u) => u.userId === userId);
+        if (!user) {
+            this.sendError(
+                pairKey,
+                userId,
+                WebSocketError.USER_NOT_FOUND,
+                "setReady",
+            );
+            return;
+        }
 
         // No permitir READY si el match ya está activo o terminado
         if (session.isActive) {
-            console.log(`[${pairKey}] User ${userId} tried READY but match is already active. Ignoring.`);
+            this.sendError(
+                pairKey,
+                userId,
+                WebSocketError.MATCH_ALREADY_ACTIVE,
+                "setReady",
+            );
             return;
         }
 
         if (session.isFinished) {
-            console.log(`[${pairKey}] User ${userId} tried READY but match is finished. Ignoring.`);
+            this.sendError(
+                pairKey,
+                userId,
+                WebSocketError.MATCH_ALREADY_FINISHED,
+                "setReady",
+            );
             return;
         }
 
         // Guardar handle y cargar problemas resueltos si cambió el handle
+        let solvedProblems = user.solvedProblems;
         if (user.handle !== handle) {
-            user.handle = handle;
-            user.solvedProblems = await this.fetchUserSolved(handle);
-            console.log(`User ${userId} (${handle}) problems loaded: ${user.solvedProblems.size}`);
+            solvedProblems = Array.from(await this.fetchUserSolved(handle));
+            console.log(
+                `User ${userId} (${handle}) problems loaded: ${solvedProblems.length}`,
+            );
         }
 
-        user.isReady = true;
+        // Update user in database
+        const result = await updateUserSolvedProblems(
+            pairKey,
+            userId,
+            solvedProblems,
+            handle,
+        );
+        if (result.error) {
+            this.sendError(
+                pairKey,
+                userId,
+                WebSocketError.SOLVED_PROBLEMS_UPDATE_FAILED,
+                "setReady",
+            );
+            return;
+        }
+
+        const readyResult = await updateUserReadyStatus(pairKey, userId, true);
+        if (readyResult.error) {
+            this.sendError(
+                pairKey,
+                userId,
+                WebSocketError.READY_STATUS_UPDATE_FAILED,
+                "setReady",
+            );
+            return;
+        }
+
         console.log(`User ${userId} (${handle}) is READY`);
 
         // Intentar iniciar la partida
-        this.tryStartMatch(pairKey, session);
+        this.tryStartMatch(pairKey);
     }
 
-    setNotReady(pairKey: string, userId: number) {
-        const session = this.sessions.get(pairKey);
-        if (!session) return;
+    async setNotReady(pairKey: string, userId: number) {
+        const session = await getSessionByPairKey(pairKey);
+        if (!session) {
+            this.sendError(
+                pairKey,
+                userId,
+                WebSocketError.SESSION_NOT_FOUND,
+                "setNotReady",
+            );
+            return;
+        }
 
         // No permitir NOT_READY si el match está activo o terminado
         if (session.isActive) {
-            console.log(`[${pairKey}] User ${userId} tried NOT_READY but match is active. Ignoring.`);
+            this.sendError(
+                pairKey,
+                userId,
+                WebSocketError.MATCH_ALREADY_ACTIVE,
+                "setNotReady",
+            );
             return;
         }
 
         if (session.isFinished) {
-            console.log(`[${pairKey}] User ${userId} tried NOT_READY but match is finished. Ignoring.`);
+            this.sendError(
+                pairKey,
+                userId,
+                WebSocketError.MATCH_ALREADY_FINISHED,
+                "setNotReady",
+            );
             return;
         }
 
-        if (session.users.has(userId)) {
-            session.users.get(userId)!.isReady = false;
+        const user = session.users.find((u) => u.userId === userId);
+        if (user) {
+            const result = await updateUserReadyStatus(pairKey, userId, false);
+            if (result.error) {
+                this.sendError(
+                    pairKey,
+                    userId,
+                    WebSocketError.READY_STATUS_UPDATE_FAILED,
+                    "setNotReady",
+                );
+                return;
+            }
             console.log(`[${pairKey}] User ${userId} is NOT READY`);
+        } else {
+            this.sendError(
+                pairKey,
+                userId,
+                WebSocketError.USER_NOT_FOUND,
+                "setNotReady",
+            );
         }
     }
 
     // 3. Iniciar Partida
-    private tryStartMatch(pairKey: string, session: MatchSession) {
-        // Necesitamos exactamente 2 usuarios listos
-        if (session.users.size !== 2) {
-            console.log(`[${pairKey}] Waiting for 2 users. Current: ${session.users.size}`);
+    private async tryStartMatch(pairKey: string) {
+        const session = await getSessionByPairKey(pairKey);
+        if (!session) {
+            // Send error to all connected users
+            const connections = this.activeConnections.get(pairKey);
+            if (connections) {
+                for (const [userId] of connections) {
+                    this.sendError(
+                        pairKey,
+                        userId,
+                        WebSocketError.SESSION_NOT_FOUND,
+                        "tryStartMatch",
+                    );
+                }
+            }
             return;
         }
 
-        const users = Array.from(session.users.values());
-        const allReady = users.every(u => u.isReady);
+        // Necesitamos exactamente 2 usuarios listos
+        if (session.users.length !== 2) {
+            console.log(
+                `[${pairKey}] Waiting for 2 users. Current: ${session.users.length}`,
+            );
+            return;
+        }
+
+        const allReady = session.users.every((u) => u.isReady);
 
         if (!allReady) {
-            console.log(`[${pairKey}] Not all users ready. Ready count: ${users.filter(u => u.isReady).length}/2`);
+            console.log(
+                `[${pairKey}] Not all users ready. Ready count: ${session.users.filter((u) => u.isReady).length}/2`,
+            );
             return;
         }
 
         if (!this.problemsLoaded) {
-            console.log(`[${pairKey}] Problems not loaded yet`);
+            // Send error to all connected users
+            session.users.forEach((user) => {
+                this.sendError(
+                    pairKey,
+                    user.userId,
+                    WebSocketError.PROBLEMS_NOT_LOADED,
+                    "tryStartMatch",
+                );
+            });
             return;
         }
 
+        // Convert to UserState format for problem finding
+        const userA: UserState = {
+            ws: this.getConnection(pairKey, session.users[0].userId),
+            handle: session.users[0].handle,
+            isReady: session.users[0].isReady,
+            solvedProblems: new Set(session.users[0].solvedProblems),
+        };
+
+        const userB: UserState = {
+            ws: this.getConnection(pairKey, session.users[1].userId),
+            handle: session.users[1].handle,
+            isReady: session.users[1].isReady,
+            solvedProblems: new Set(session.users[1].solvedProblems),
+        };
+
         // Buscar problema
-        const problem = this.findFairProblem(users[0], users[1]);
+        const problem = this.findFairProblem(userA, userB);
 
         if (!problem) {
-            console.log(`[${pairKey}] No fair problem found for these users`);
+            // Send error to all connected users
+            session.users.forEach((user) => {
+                this.sendError(
+                    pairKey,
+                    user.userId,
+                    WebSocketError.NO_FAIR_PROBLEM_FOUND,
+                    "tryStartMatch",
+                );
+            });
             return;
         }
 
         // Iniciar partida
-        session.currentProblem = problem;
-        session.isActive = true;
+        const result = await updateSession(pairKey, {
+            currentProblem: problem,
+            isActive: true,
+        });
+
+        if (result.error) {
+            // Send error to all connected users
+            session.users.forEach((user) => {
+                this.sendError(
+                    pairKey,
+                    user.userId,
+                    WebSocketError.MATCH_START_FAILED,
+                    "tryStartMatch",
+                );
+            });
+            return;
+        }
 
         const msg = {
-            action: 'START_MATCH',
-            data: problem
+            action: "START_MATCH",
+            data: problem,
         };
 
-        users.forEach(u => u.ws.send(JSON.stringify(msg)));
+        // Send to both users
+        session.users.forEach((user) => {
+            const ws = this.getConnection(pairKey, user.userId);
+            if (ws) {
+                ws.send(JSON.stringify(msg));
+            }
+        });
+
         console.log(`[${pairKey}] Match started: ${problem.name}`);
     }
 
     // 4. Verificar Victoria (CHECK)
     async checkWinCondition(pairKey: string, userId: number) {
-        const session = this.sessions.get(pairKey);
-        if (!session || !session.isActive || !session.currentProblem) {
-            console.log(`[${pairKey}] Invalid session state for check`);
+        const session = await getSessionByPairKey(pairKey);
+        if (!session) {
+            this.sendError(
+                pairKey,
+                userId,
+                WebSocketError.SESSION_NOT_FOUND,
+                "checkWinCondition",
+            );
+            return;
+        }
+
+        if (!session.isActive) {
+            this.sendError(
+                pairKey,
+                userId,
+                WebSocketError.MATCH_NOT_ACTIVE,
+                "checkWinCondition",
+            );
+            return;
+        }
+
+        if (!session.currentProblem) {
+            this.sendError(
+                pairKey,
+                userId,
+                WebSocketError.MATCH_NOT_ACTIVE,
+                "checkWinCondition - no current problem",
+            );
             return;
         }
 
         // No permitir CHECK si el match ya terminó
         if (session.isFinished) {
-            console.log(`[${pairKey}] User ${userId} tried CHECK but match is finished. Ignoring.`);
+            this.sendError(
+                pairKey,
+                userId,
+                WebSocketError.MATCH_ALREADY_FINISHED,
+                "checkWinCondition",
+            );
             return;
         }
 
-        const user = session.users.get(userId);
-        if (!user || !user.handle) return;
+        const user = session.users.find((u) => u.userId === userId);
+        if (!user || !user.handle) {
+            this.sendError(
+                pairKey,
+                userId,
+                WebSocketError.USER_NOT_FOUND,
+                "checkWinCondition",
+            );
+            return;
+        }
 
         // Verificar en Codeforces si resolvió el problema actual
-        const isSolved = await this.verifySpecificProblem(user.handle, session.currentProblem);
+        const isSolved = await this.verifySpecificProblem(
+            user.handle,
+            session.currentProblem,
+        );
 
         if (isSolved) {
+            // add result
+            let looser_id: number = session.users
+                .filter((us) => us.userId !== userId)
+                .map((us) => us.userId)[0];
+
+            const res = await result_service.create({
+                contest_id: session.contestID,
+                winner_id: userId,
+                local_id: userId,
+                visitant_id: looser_id,
+            });
+
+            if (res.error) {
+                this.sendError(pairKey, userId, WebSocketError.INTERNAL_ERROR, "We could not store the result.");
+                return;
+            }
+
             // Usuario ganó
-            user.ws.send(JSON.stringify({ action: 'WINNER' }));
+            const ws = this.getConnection(pairKey, userId);
+            if (ws) {
+                ws.send(JSON.stringify({ action: "WINNER" }));
+            }
             console.log(`[${pairKey}] User ${userId} WINNER`);
 
             // Notificar al otro usuario
-            for (const [otherId, otherUser] of session.users) {
-                if (otherId !== userId) {
-                    otherUser.ws.send(JSON.stringify({ action: 'LOSER' }));
-                    console.log(`[${pairKey}] User ${otherId} LOSER`);
+            session.users.forEach((otherUser) => {
+                if (otherUser.userId !== userId) {
+                    looser_id = otherUser.userId;
+                    const otherWs = this.getConnection(pairKey, otherUser.userId);
+                    if (otherWs) {
+                        otherWs.send(JSON.stringify({ action: "LOSER" }));
+                    }
+                    console.log(`[${pairKey}] User ${otherUser.userId} LOSER`);
+                }
+            });
+
+            // Terminar partida
+            const result = await updateSession(pairKey, {
+                isActive: false,
+                isFinished: true,
+                currentProblem: null,
+            });
+
+            if (result.error) {
+                // Send error to all users
+                session.users.forEach((user) => {
+                    this.sendError(
+                        pairKey,
+                        user.userId,
+                        WebSocketError.MATCH_FINISH_FAILED,
+                        "checkWinCondition",
+                    );
+                });
+                return;
+            }
+
+            // Reset all users ready status
+            for (const user of session.users) {
+                await updateUserReadyStatus(pairKey, user.userId, false);
+            }
+
+            // Close connection.
+            for (const user of session.users) {
+                const ws = this.getConnection(pairKey, user.userId);
+                if (ws) {
+                    ws.close();
                 }
             }
 
-            // Terminar partida
-            session.isActive = false;
-            session.isFinished = true; // Marcar como terminado
-            session.currentProblem = null;
-            session.users.forEach(u => u.isReady = false);
+            // Remove session from cache
+            deleteSession(pairKey);
         } else {
             // Continuar
-            user.ws.send(JSON.stringify({ action: 'CONTINUE' }));
+            const ws = this.getConnection(pairKey, userId);
+            if (ws) {
+                ws.send(JSON.stringify({ action: "CONTINUE" }));
+            }
         }
     }
 
     // --- Helpers de Codeforces ---
 
-    private findFairProblem(userA: UserState, userB: UserState): CFProblem | null {
-        const candidates = this.allProblemsCache.filter(p =>
-            !userA.solvedProblems.has(`${p.contestId}-${p.index}`) &&
-            !userB.solvedProblems.has(`${p.contestId}-${p.index}`)
+    private findFairProblem(
+        userA: UserState,
+        userB: UserState,
+    ): CFProblem | null {
+        const candidates = this.allProblemsCache.filter(
+            (p) =>
+                !userA.solvedProblems.has(`${p.contestId}-${p.index}`) &&
+                !userB.solvedProblems.has(`${p.contestId}-${p.index}`),
         );
 
         if (candidates.length === 0) return null;
@@ -258,7 +653,9 @@ export class MatchService {
         const solved = new Set<string>();
         try {
             await this.waitForRateLimit();
-            const res = await fetch(`https://codeforces.com/api/user.status?handle=${handle}`);
+            const res = await fetch(
+                `https://codeforces.com/api/user.status?handle=${handle}`,
+            );
             const data = await res.json();
 
             if (data.status === "OK" && data.result) {
@@ -276,17 +673,23 @@ export class MatchService {
         return solved;
     }
 
-    private async verifySpecificProblem(handle: string, problem: CFProblem): Promise<boolean> {
+    private async verifySpecificProblem(
+        handle: string,
+        problem: CFProblem,
+    ): Promise<boolean> {
         try {
             await this.waitForRateLimit();
-            const res = await fetch(`https://codeforces.com/api/user.status?handle=${handle}&from=1&count=5`);
+            const res = await fetch(
+                `https://codeforces.com/api/user.status?handle=${handle}&from=1&count=5`,
+            );
             const data = await res.json();
 
             if (data.status === "OK" && data.result) {
-                return data.result.some((sub: any) =>
-                    sub.verdict === "OK" &&
-                    sub.problem.contestId === problem.contestId &&
-                    sub.problem.index === problem.index
+                return data.result.some(
+                    (sub: any) =>
+                        sub.verdict === "OK" &&
+                        sub.problem.contestId === problem.contestId &&
+                        sub.problem.index === problem.index,
                 );
             }
         } catch (e) {

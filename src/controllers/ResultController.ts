@@ -6,17 +6,11 @@ import {
 import { IdSupabaseInt4 } from "../utils/schemas/lib";
 import { ResultService } from "../services/ResultService";
 import { SupabaseAdapter } from "../db/supabase/supabase.adapter";
-import { MatchmakingService } from "../services/MatchmakingService";
-import { MongoAdapter } from "../db/mongo/mongo.adapter";
 import { ENTITY_FILTER_SCHEMAS, getEntityFilters } from "../utils/filters";
 import { BadRequest, Created, Ok } from "../utils/responses";
 import { jwtPlugin } from "../utils/macros/auth";
 
-const matchmakingService = new MatchmakingService(
-    new MongoAdapter(),
-    new SupabaseAdapter(),
-);
-const resultService = new ResultService(new SupabaseAdapter(), matchmakingService);
+const resultService = new ResultService(new SupabaseAdapter());
 
 export const results = new Elysia({
     prefix: "/results",
