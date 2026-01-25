@@ -27,9 +27,7 @@ import {
 import { WebSocketError, getErrorMessage } from "../utils/websocket-errors";
 import { ResultService } from "./ResultService";
 
-const result_service = new ResultService(
-    new SupabaseAdapter(),
-);
+const result_service = new ResultService(new SupabaseAdapter());
 
 export class MatchService {
     // In-memory cache for WebSocket connections (not persisted)
@@ -166,13 +164,19 @@ export class MatchService {
         let session = await getSessionByPairKey(pairKey);
 
         if (session && session.isFinished) {
-            this.sendError(
-                pairKey,
-                userId,
-                WebSocketError.MATCH_ALREADY_FINISHED,
-                "connect",
-            );
-            ws.close();
+            if (session.isFinished) {
+                this.sendError(
+                    pairKey,
+                    userId,
+                    WebSocketError.MATCH_ALREADY_FINISHED,
+                    "connect",
+                );
+                ws.close();
+                return;
+            }
+
+            ws.send(JSON.stringify({ action: "SESSION_RESUME", data: { session } }));
+            return;
         }
 
         if (!session) {
@@ -566,7 +570,12 @@ export class MatchService {
             });
 
             if (res.error) {
-                this.sendError(pairKey, userId, WebSocketError.INTERNAL_ERROR, "We could not store the result.");
+                this.sendError(
+                    pairKey,
+                    userId,
+                    WebSocketError.INTERNAL_ERROR,
+                    "We could not store the result.",
+                );
                 return;
             }
 
