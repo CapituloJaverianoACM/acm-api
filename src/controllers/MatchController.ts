@@ -2,11 +2,16 @@ import { Elysia } from 'elysia';
 import { SocketParams } from '../utils/schemas/websocket';
 import { MatchService } from '../services/MatchService';
 import { jwtPlugin } from '../utils/macros/auth';
+import { BadRequest } from '../utils/responses';
 
 // Instancia única (Singleton)
 const matchService = new MatchService();
 
 export const match = new Elysia()
+    .onBeforeHandle(c => {
+        if (!c.query.token) return BadRequest(c, "token query needed.");
+        c.request.headers.set('authorization', `Bearer ${c.query.token}`);
+    })
     .use(jwtPlugin)
     .guard({ params: SocketParams, isSelf: ["params.ownID"] })
     .derive(({ params }) => {
