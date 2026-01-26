@@ -5,6 +5,7 @@ type CFProblem = {
     name: string;
     rating: number;
 };
+
 type UserState = {
     ws: any;
     handle: string | null;
@@ -29,11 +30,13 @@ import { WebSocketAction } from "../utils/websocket-types";
 import { ResultService } from "./ResultService";
 
 const result_service = new ResultService(new SupabaseAdapter());
+const ALLOWED_DIVS: string[] = ["Div. 3", "Div. 4"];
 
 export class MatchService {
     // In-memory cache for WebSocket connections (not persisted)
     private activeConnections = new Map<string, Map<number, any>>();
     private allProblemsCache: CFProblem[] = [];
+    private contestCache = new Map<number, string>();
     private problemsLoaded = false;
     private lastCFRequest = 0; // Timestamp del último request a Codeforces
     private messenger: WebSocketMessenger;
@@ -118,16 +121,40 @@ export class MatchService {
         return this.activeConnections.get(pairKey)?.get(userId) || null;
     }
 
+    private async loadContests() {
+        console.log("Loading contests from Codeforces...");
+        try {
+            const res = await fetch("https://codeforces.com/api/contest.list");
+            const data = await res.json();
+            if (data.status === "OK") {
+                (data.result as any[]).forEach((contest) =>
+                    this.contestCache.set(contest.id, contest.name),
+                );
+            } else throw new Error("Whoops, codeforces throw " + data.status);
+        } catch (e) {
+            console.log("Failed loading contests " + e);
+        }
+    }
+
     // Cargar problemas con espera
     private async loadProblems() {
         try {
+            await this.loadContests();
             console.log("Loading problems from Codeforces...");
             const res = await fetch("https://codeforces.com/api/problemset.problems");
             const data = await res.json();
             if (data.status === "OK") {
                 // Filtrar solo problemas de rating 800
                 this.allProblemsCache = data.result.problems
-                    .filter((p: any) => p.rating === 800)
+                    .filter((p: any) => {
+                        return (
+                            p.rating === 800 &&
+                            this.contestCache.has(p.contestId) &&
+                            ALLOWED_DIVS.some((allowed_div) =>
+                                this.contestCache.get(p.contestId)?.indexOf(allowed_div) !== -1,
+                            )
+                        );
+                    })
                     .map((p: any) => ({
                         contestId: p.contestId,
                         index: p.index,
@@ -175,16 +202,17 @@ export class MatchService {
                 return;
             }
 
-            const thisUserExists = session.users.find(user => user.userId === userId);
-            
+            const thisUserExists = session.users.find(
+                (user) => user.userId === userId,
+            );
+
             if (thisUserExists) {
                 this.messenger.sendSessionResume(pairKey, userId, session);
                 console.log(
-                `User ${userId} reconnected to room ${pairKey} (Match state: active=${session.isActive}, finished=${session.isFinished})`,
-            );
-                return; 
+                    `User ${userId} reconnected to room ${pairKey} (Match state: active=${session.isActive}, finished=${session.isFinished})`,
+                );
+                return;
             }
-
         }
 
         if (!session) {
@@ -483,8 +511,8 @@ export class MatchService {
                 index: problem.index,
                 name: problem.name,
                 rating: problem.rating,
-                url: `https://codeforces.com/problemset/problem/${problem.contestId}/${problem.index}`
-            }
+                url: `https://codeforces.com/problemset/problem/${problem.contestId}/${problem.index}`,
+            },
         });
 
         console.log(`[${pairKey}] Match started: ${problem.name}`);
@@ -577,7 +605,7 @@ export class MatchService {
             // Usuario ganó - use messenger
             this.messenger.sendWinner(pairKey, userId, {
                 pairKey,
-                userId
+                userId,
             });
             console.log(`[${pairKey}] User ${userId} WINNER`);
 
@@ -586,8 +614,8 @@ export class MatchService {
                 userId: looser_id,
                 opponent: {
                     userId: userId,
-                    handle: user.handle
-                }
+                    handle: user.handle,
+                },
             });
             console.log(`[${pairKey}] User ${looser_id} LOSER`);
 
