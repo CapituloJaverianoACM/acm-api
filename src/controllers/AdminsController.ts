@@ -1,10 +1,10 @@
 import { Elysia } from "elysia";
-import { UserService } from "../../services/UserService";
-import { BadRequest, Ok } from "../../utils/responses";
-import { jwtPlugin } from "../../utils/macros/auth";
-import { SupabaseAuthProvider } from "../../auth/supabase/supabase.auth.adapter";
-import { CreateAdminSchema } from "../../utils/schemas/admins";
-import { IdSupabaseInt4 } from "../../utils/schemas/lib";
+import { UserService } from "../services/UserService";
+import { BadRequest, Ok } from "../utils/responses";
+import { jwtPlugin } from "../utils/macros/auth";
+import { SupabaseAuthProvider } from "../auth/supabase/supabase.auth.adapter";
+import { CreateAdminSchema } from "../utils/schemas/admins";
+import { IdSupabaseInt4 } from "../utils/schemas/lib";
 
 const userService = new UserService(SupabaseAuthProvider.getInstance());
 

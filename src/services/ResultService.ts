@@ -1,94 +1,98 @@
 import { IDatabase } from "../db/database.interface";
+import { MongoAdapter } from "../db/mongo/mongo.adapter";
+import { SupabaseAdapter } from "../db/supabase/supabase.adapter";
+import { Result } from "../utils/schemas/result";
+import { MatchmakingService } from "./MatchmakingService";
 
 const COLLECTION: string = "results";
 
 export class ResultService {
-  constructor(private db: IDatabase) {}
+    private matchmakingService = new MatchmakingService(
+        new MongoAdapter(),
+        new SupabaseAdapter(),
+    );
+    constructor(private db: IDatabase) { }
 
-  async getAll(
-    filters: any,
-    order?: { column: string; asc?: boolean },
-    suborder?: { column: string; asc?: boolean },
-    limit?: number,
-    offset?: number,
-  ): Promise<{ error: string | null; data: any }> {
-    const result =
-      Object.keys(filters).length > 0
-        ? await this.db.getBy(
-            COLLECTION,
-            filters,
-            order,
-            suborder,
-            limit,
-            offset,
-          )
-        : await this.db.getAll(COLLECTION, order, suborder, limit, offset);
+    async getAll(
+        filters: any,
+        order?: { column: string; asc?: boolean },
+        suborder?: { column: string; asc?: boolean },
+        limit?: number,
+        offset?: number,
+    ): Promise<{ error: string | null; data: any }> {
+        const result =
+            Object.keys(filters).length > 0
+                ? await this.db.getBy(
+                    COLLECTION,
+                    filters,
+                    order,
+                    suborder,
+                    limit,
+                    offset,
+                )
+                : await this.db.getAll(COLLECTION, order, suborder, limit, offset);
 
-    return result;
-  }
-
-  async getOne(id: any): Promise<{ error: string | null; data: any }> {
-    const resultQuery = { id: id };
-    const result = await this.db.getBy(COLLECTION, resultQuery);
-    return result;
-  }
-
-  async getByContestId(id: any): Promise<{ error: string | null; data: any }> {
-    const resultsQuery = { contest_id: id };
-    const result = await this.db.getBy(COLLECTION, resultsQuery);
-    return result;
-  }
-
-  async create(resultData: any): Promise<{ error: string | null; data: any }> {
-    const { local_id, visitant_id, winner_id } = resultData;
-
-    if (local_id == visitant_id) {
-      return { error: "Visitant and Local are the same.", data: null };
+        return result;
     }
 
-    if (winner_id != local_id && winner_id != visitant_id) {
-      return { error: "Neither visitant or local is the winner", data: null };
+    async getOne(id: any): Promise<{ error: string | null; data: any }> {
+        const resultQuery = { id: id };
+        const result = await this.db.getBy(COLLECTION, resultQuery);
+        return result;
     }
 
-    const result = await this.db.insert(COLLECTION, resultData);
-    return result;
-  }
-
-  async update(
-    id: any,
-    resultData: any,
-  ): Promise<{ error: string | null; data: any }> {
-    const { winner_id, local_id, visitant_id } = resultData;
-    const resultQuery = {
-      id: id,
-    };
-
-    const toUpdt = await this.db.getBy(COLLECTION, resultQuery);
-
-    if (!toUpdt.data) {
-      return { error: "Result do not exist", data: null };
+    async getByContestId(id: any): Promise<{ error: string | null; data: any }> {
+        const resultsQuery = { contest_id: id };
+        const result = await this.db.getBy(COLLECTION, resultsQuery);
+        return result;
     }
 
-    if (winner_id != local_id && winner_id != visitant_id) {
-      return { error: "Neither visitant or local is the winner", data: null };
+    async create(
+        resultData: Omit<Result, "id">,
+    ): Promise<{ error: string | null; data: any }> {
+        if (this.matchmakingService) {
+            // Delegar al flujo transaccional (supabase + mongo)
+            return this.matchmakingService.setResult(resultData);
+        }
+
+        return { error: "Matchmaking service not available", data: null };
     }
 
-    const result = await this.db.update(COLLECTION, resultQuery, resultData);
-    return result;
-  }
+    async update(
+        id: any,
+        resultData: any,
+    ): Promise<{ error: string | null; data: any }> {
+        const { winner_id, local_id, visitant_id } = resultData;
+        const resultQuery = {
+            id: id,
+        };
 
-  async delete(id: any): Promise<{ error: string | null; data: any }> {
-    const resultQuery = {
-      id: id,
-    };
+        const toUpdt = await this.db.getBy(COLLECTION, resultQuery);
 
-    const toDelete = await this.db.getBy(COLLECTION, resultQuery);
+        if (!toUpdt.data) {
+            return { error: "Result do not exist", data: null };
+        }
 
-    if (toDelete.error) {
-      return toDelete;
+        if (winner_id != local_id && winner_id != visitant_id) {
+            return { error: "Neither visitant or local is the winner", data: null };
+        }
+
+        const result = await this.db.update(COLLECTION, resultQuery, resultData);
+        return result;
     }
 
-    const result = await this.db.delete(COLLECTION, resultQuery);
-    return result;
-  }
+    async delete(id: any): Promise<{ error: string | null; data: any }> {
+        const resultQuery = {
+            id: id,
+        };
+
+        const toDelete = await this.db.getBy(COLLECTION, resultQuery);
+
+        if (toDelete.error) {
+            return toDelete;
+        }
+
+        const result = await this.db.delete(COLLECTION, resultQuery);
+        return result;
+    }
 }

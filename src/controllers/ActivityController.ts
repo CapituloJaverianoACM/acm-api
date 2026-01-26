@@ -2,12 +2,12 @@ import Elysia, { t } from "elysia";
 import {
     ActivitySchema,
     UpdateActivitySchema,
-} from "../../utils/schemas/activity";
-import { ActivityService } from "../../services/ActivityService";
-import { MongoAdapter } from "../../db/mongo/mongo.adapter";
-import { ENTITY_FILTER_SCHEMAS, getEntityFilters } from "../../utils/filters";
-import { BadRequest, Ok } from "../../utils/responses";
-import { jwtPlugin } from "../../utils/macros/auth";
+} from "../utils/schemas/activity";
+import { ActivityService } from "../services/ActivityService";
+import { MongoAdapter } from "../db/mongo/mongo.adapter";
+import { ENTITY_FILTER_SCHEMAS, getEntityFilters } from "../utils/filters";
+import { BadRequest, Ok } from "../utils/responses";
+import { jwtPlugin } from "../utils/macros/auth";
 
 const activityService = new ActivityService(new MongoAdapter());
 
